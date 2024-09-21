@@ -1,0 +1,15 @@
+Now for the business side, there are three stakeholders in the project development:
+
+1. The content creator, author in this case
+2. The readers who can pay for the book and stake only after purchasing it.
+3. The platform which hosts all the books and do all the split of profits, etc
+
+Now the project should use the following stack:
+1. It must be built on Solana where the transaction happens using blinks.
+2. Frontend must be built using react js
+3. Anchor framework for Solana development
+4. Use any storage services
+
+The product must have two interfaces.
+1. The content creator where they can post their chapters for a book. They can also see the number of people who bought it and similar statistics
+2. The user or reader, who can select a book from a list of books. They can see the table of contents in the left side. They can start from whichever chapter they want to start from. When completing a chapter, the interface should show elegantly the next chapter has to be bought.
