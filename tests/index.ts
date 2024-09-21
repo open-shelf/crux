@@ -6,12 +6,11 @@ before(() => {
 });
 
 describe('OpenShelf Tests', () => {
-    // require('./add_book');
-    // require('./add_chapter');
+    require('./add_book');
+    require('./add_chapter');
     require('./purchase_chapter');
-    // require('./purchase_full_book');
-    // require('./stake_on_book');
-//   require('./claim_earnings');
+    require('./purchase_full_book');
+    require('./stake_on_book');
 });
 
 after(() => {

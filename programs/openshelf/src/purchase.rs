@@ -54,17 +54,17 @@ pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Res
 }
 
 pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
-    let book = &mut ctx.accounts.book;
     let buyer_key = *ctx.accounts.buyer.key;
 
+    // Check if the buyer has already purchased the book
     require!(
-        !book.readers.contains(&buyer_key),
+        !ctx.accounts.book.readers.contains(&buyer_key),
         ProgramErrorCode::AlreadyPurchased
     );
 
-    let price = book.full_book_price;
+    let price = ctx.accounts.book.full_book_price;
     let author_share = price * 70 / 100; // 70% to author
-    let stakers_share = price - author_share; // 30% to stakers
+    let book_share = price - author_share; // 30% to book account for stakers
 
     // Transfer author's share
     let cpi_context = CpiContext::new(
@@ -76,12 +76,25 @@ pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
     );
     anchor_lang::system_program::transfer(cpi_context, author_share)?;
 
+    // Transfer book's share (for stakers)
+    let cpi_context = CpiContext::new(
+        ctx.accounts.system_program.to_account_info(),
+        anchor_lang::system_program::Transfer {
+            from: ctx.accounts.buyer.to_account_info(),
+            to: ctx.accounts.book.to_account_info(),
+        },
+    );
+    anchor_lang::system_program::transfer(cpi_context, book_share)?;
+
+    // Now we can mutably borrow ctx.accounts.book
+    let book = &mut ctx.accounts.book;
+
     // Distribute stakers' share
     if book.total_stake > 0 {
         let total_stake = book.total_stake;
         for stake in &mut book.stakes {
             let staker_share =
-                (stake.amount as u128 * stakers_share as u128 / total_stake as u128) as u64;
+                (stake.amount as u128 * book_share as u128 / total_stake as u128) as u64;
             stake.earnings += staker_share;
         }
     }
@@ -97,7 +110,7 @@ pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
 }
 
 #[derive(Accounts)]
-pub struct PurchaseChapter<'info> {
+pub struct PurchaseFullBook<'info> {
     #[account(mut)]
     pub book: Account<'info, Book>,
     #[account(mut)]
@@ -109,7 +122,7 @@ pub struct PurchaseChapter<'info> {
 }
 
 #[derive(Accounts)]
-pub struct PurchaseFullBook<'info> {
+pub struct PurchaseChapter<'info> {
     #[account(mut)]
     pub book: Account<'info, Book>,
     #[account(mut)]

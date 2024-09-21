@@ -14,7 +14,6 @@ export const setup = async () => {
   const reader2 = anchor.web3.Keypair.generate();
   const staker1 = anchor.web3.Keypair.generate();
   const staker2 = anchor.web3.Keypair.generate();
-  const stakePoolKeypair = anchor.web3.Keypair.generate();
 
   const bookTitle = "The Great Gatsby";
   const chapterPrices = [100000000, 200000000, 300000000]; // 0.1 SOL, 0.2 SOL, 0.3 SOL
@@ -46,7 +45,6 @@ export const setup = async () => {
     reader2,
     staker1,
     staker2,
-    stakePoolKeypair,
     bookTitle,
     chapterPrices,
     fullBookPrice,
