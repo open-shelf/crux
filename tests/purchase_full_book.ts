@@ -4,7 +4,7 @@ import { setup } from "./setup";
 
 describe("Purchase Full Book", () => {
   it("Can purchase a full book and distribute earnings", async () => {
-    const { program, bookKeypair, author, reader2, staker1, bookTitle, chapterPrices, fullBookPrice } = await setup();
+    const { program, bookKeypair, author, reader2, staker1, platform, bookTitle, chapterPrices, fullBookPrice } = await setup();
 
     try {
       // Add a book
@@ -36,6 +36,7 @@ describe("Purchase Full Book", () => {
 
       const initialAuthorBalance = await program.provider.connection.getBalance(author.publicKey);
       const initialBookBalance = await program.provider.connection.getBalance(bookKeypair.publicKey);
+      const initialPlatformBalance = await program.provider.connection.getBalance(platform.publicKey);
 
       await program.methods
         .purchaseFullBook()
@@ -43,6 +44,7 @@ describe("Purchase Full Book", () => {
           book: bookKeypair.publicKey,
           buyer: reader2.publicKey,
           author: author.publicKey,
+          platform: platform.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([reader2])
@@ -55,9 +57,11 @@ describe("Purchase Full Book", () => {
 
       const finalAuthorBalance = await program.provider.connection.getBalance(author.publicKey);
       const finalBookBalance = await program.provider.connection.getBalance(bookKeypair.publicKey);
+      const finalPlatformBalance = await program.provider.connection.getBalance(platform.publicKey);
 
       const expectedAuthorPayment = fullBookPrice.toNumber() * 0.7; // 70% to author
-      const expectedBookPayment = fullBookPrice.toNumber() * 0.3; // 30% to book account (for stakers)
+      const expectedBookPayment = fullBookPrice.toNumber() * 0.2; // 20% to book account (for stakers)
+      const expectedPlatformPayment = fullBookPrice.toNumber() * 0.1; // 10% to platform
 
       assert.approximately(
         finalAuthorBalance - initialAuthorBalance,
@@ -71,6 +75,13 @@ describe("Purchase Full Book", () => {
         expectedBookPayment,
         1000000, // Allow for a small difference due to transaction fees
         "Book account should have received the correct payment for stakers"
+      );
+
+      assert.approximately(
+        finalPlatformBalance - initialPlatformBalance,
+        expectedPlatformPayment,
+        1000000, // Allow for a small difference due to transaction fees
+        "Platform should have received the correct payment"
       );
 
       // Check staker earnings
@@ -92,9 +103,10 @@ describe("Purchase Full Book", () => {
       }
 
       console.log("Full book purchased successfully");
-      console.log("Author payment:", finalAuthorBalance - initialAuthorBalance);
-      console.log("Book account increase (for stakers):", finalBookBalance - initialBookBalance);
-      console.log("Staker earnings:", stakerStake.earnings.toNumber());
+      console.log("Author payment:", (finalAuthorBalance - initialAuthorBalance) / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+      console.log("Book account increase (for stakers):", (finalBookBalance - initialBookBalance) / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+      console.log("Platform payment:", (finalPlatformBalance - initialPlatformBalance) / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+      console.log("Staker earnings:", stakerStake.earnings.toNumber() / anchor.web3.LAMPORTS_PER_SOL, "SOL");
     } catch (error) {
       console.error("Error purchasing full book:", error);
       throw error;

@@ -4,7 +4,7 @@ import { setup } from "./setup";
 
 describe("Purchase Chapter", () => {
   it("Can purchase a chapter and distribute earnings", async () => {
-    const { program, bookKeypair, author, reader1, staker1, bookTitle, chapterPrices, fullBookPrice } = await setup();
+    const { program, bookKeypair, author, reader1, staker1, platform, bookTitle, chapterPrices, fullBookPrice } = await setup();
 
     try {
       // Add a book
@@ -47,6 +47,7 @@ describe("Purchase Chapter", () => {
 
       const chapterIndex = 0;
       const initialAuthorBalance = await program.provider.connection.getBalance(author.publicKey);
+      const initialPlatformBalance = await program.provider.connection.getBalance(platform.publicKey);
 
       await program.methods
         .purchaseChapter(chapterIndex)
@@ -54,6 +55,7 @@ describe("Purchase Chapter", () => {
           book: bookKeypair.publicKey,
           buyer: reader1.publicKey,
           author: author.publicKey,
+          platform: platform.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers([reader1])
@@ -65,19 +67,28 @@ describe("Purchase Chapter", () => {
       ));
 
       const finalAuthorBalance = await program.provider.connection.getBalance(author.publicKey);
+      const finalPlatformBalance = await program.provider.connection.getBalance(platform.publicKey);
+
       const expectedAuthorPayment = chapterPrices[chapterIndex] * 0.7; // 70% to author
+      const expectedPlatformPayment = chapterPrices[chapterIndex] * 0.1; // 10% to platform
       assert.approximately(
         finalAuthorBalance - initialAuthorBalance,
         expectedAuthorPayment,
         1000000, // Allow for a small difference due to transaction fees
         "Author should have received the correct payment"
       );
+      assert.approximately(
+        finalPlatformBalance - initialPlatformBalance,
+        expectedPlatformPayment,
+        1000000, // Allow for a small difference due to transaction fees
+        "Platform should have received the correct payment"
+      );
 
       // Check staker earnings
       const stakerStake = bookAccount.stakes.find(
         (stake) => stake.staker.equals(staker1.publicKey)
       );
-      const expectedStakerEarnings = chapterPrices[chapterIndex] * 0.3; // 30% to stakers
+      const expectedStakerEarnings = chapterPrices[chapterIndex] * 0.2; // 20% to stakers
       assert.approximately(
         stakerStake.earnings.toNumber(),
         expectedStakerEarnings,
@@ -87,6 +98,7 @@ describe("Purchase Chapter", () => {
 
       console.log("Chapter purchased successfully");
       console.log("Author payment:", finalAuthorBalance - initialAuthorBalance);
+      console.log("Platform payment:", finalPlatformBalance - initialPlatformBalance);
       console.log("Staker earnings:", stakerStake.earnings.toNumber());
     } catch (error) {
       console.error("Error purchasing chapter:", error);

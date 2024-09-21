@@ -17,7 +17,8 @@ pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Res
 
     let price = book.chapter_prices[chapter_index as usize];
     let author_share = price * 70 / 100; // 70% to author
-    let stakers_share = price - author_share; // 30% to stakers
+    let stakers_share = price * 20 / 100; // 20% to stakers
+    let platform_share = price * 10 / 100; // 10% to platform
 
     // Transfer author's share
     let cpi_context = CpiContext::new(
@@ -28,6 +29,16 @@ pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Res
         },
     );
     anchor_lang::system_program::transfer(cpi_context, author_share)?;
+
+    // Transfer platform's share
+    let cpi_context = CpiContext::new(
+        ctx.accounts.system_program.to_account_info(),
+        anchor_lang::system_program::Transfer {
+            from: ctx.accounts.buyer.to_account_info(),
+            to: ctx.accounts.platform.to_account_info(),
+        },
+    );
+    anchor_lang::system_program::transfer(cpi_context, platform_share)?;
 
     // Distribute stakers' share
     if book.total_stake > 0 {
@@ -64,7 +75,8 @@ pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
 
     let price = ctx.accounts.book.full_book_price;
     let author_share = price * 70 / 100; // 70% to author
-    let book_share = price - author_share; // 30% to book account for stakers
+    let stakers_share = price * 20 / 100; // 20% to stakers
+    let platform_share = price * 10 / 100; // 10% to platform
 
     // Transfer author's share
     let cpi_context = CpiContext::new(
@@ -76,7 +88,17 @@ pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
     );
     anchor_lang::system_program::transfer(cpi_context, author_share)?;
 
-    // Transfer book's share (for stakers)
+    // Transfer platform's share
+    let cpi_context = CpiContext::new(
+        ctx.accounts.system_program.to_account_info(),
+        anchor_lang::system_program::Transfer {
+            from: ctx.accounts.buyer.to_account_info(),
+            to: ctx.accounts.platform.to_account_info(),
+        },
+    );
+    anchor_lang::system_program::transfer(cpi_context, platform_share)?;
+
+    // Transfer stakers' share to book account
     let cpi_context = CpiContext::new(
         ctx.accounts.system_program.to_account_info(),
         anchor_lang::system_program::Transfer {
@@ -84,9 +106,8 @@ pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
             to: ctx.accounts.book.to_account_info(),
         },
     );
-    anchor_lang::system_program::transfer(cpi_context, book_share)?;
+    anchor_lang::system_program::transfer(cpi_context, stakers_share)?;
 
-    // Now we can mutably borrow ctx.accounts.book
     let book = &mut ctx.accounts.book;
 
     // Distribute stakers' share
@@ -94,7 +115,7 @@ pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
         let total_stake = book.total_stake;
         for stake in &mut book.stakes {
             let staker_share =
-                (stake.amount as u128 * book_share as u128 / total_stake as u128) as u64;
+                (stake.amount as u128 * stakers_share as u128 / total_stake as u128) as u64;
             stake.earnings += staker_share;
         }
     }
@@ -118,6 +139,9 @@ pub struct PurchaseFullBook<'info> {
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub author: AccountInfo<'info>,
+    /// CHECK: This is safe because we're only transferring SOL to this account
+    #[account(mut)]
+    pub platform: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -130,5 +154,8 @@ pub struct PurchaseChapter<'info> {
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub author: AccountInfo<'info>,
+    /// CHECK: This is safe because we're only transferring SOL to this account
+    #[account(mut)]
+    pub platform: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
