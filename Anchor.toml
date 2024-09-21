@@ -6,7 +6,7 @@ skip-lint = false
 
 [programs.localnet]
 opencore = "HQdP3fdSLiDKGfBLivhyxocKix2kEkFDCE8crBRGFkkD"
-openshelf = "6sPkjZEfevcJVmUVzvvW57QAZnu3Q8mvLg1CcJLZyaL4"
+openshelf = "CHvjheWKjEgv4xofs9jdKE1EA6tLSzpxbdptpyRFZpYE"
 
 [registry]
 url = "https://api.apr.dev"
@@ -16,4 +16,4 @@ cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/index.ts"
