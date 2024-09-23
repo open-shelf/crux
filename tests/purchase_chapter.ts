@@ -4,15 +4,14 @@ import { setup } from "./setup";
 
 describe("Purchase Chapter", () => {
   it("Can purchase a chapter and distribute earnings", async () => {
-    const { program, bookKeypair, author, reader1, staker1, platform, bookTitle, chapterPrices, fullBookPrice } = await setup();
+    const { program, bookKeypair, author, reader1, staker1, platform, bookTitle, metaUrl, chapterPrices } = await setup();
 
     try {
       // Add a book
       await program.methods
         .addBook(
           bookTitle,
-          chapterPrices.map((price) => new anchor.BN(price)),
-          fullBookPrice
+          metaUrl // Add meta_url parameter
         )
         .accounts({
           book: bookKeypair.publicKey,
@@ -24,7 +23,7 @@ describe("Purchase Chapter", () => {
 
       // Add a chapter
       await program.methods
-        .addChapter("https://example.com/chapter1", 0)
+        .addChapter("https://example.com/chapter1", 0, new anchor.BN(chapterPrices[0])) // Convert chapterPrices to BN
         .accounts({
           book: bookKeypair.publicKey,
           author: author.publicKey,
@@ -62,7 +61,7 @@ describe("Purchase Chapter", () => {
         .rpc();
 
       const bookAccount = await program.account.book.fetch(bookKeypair.publicKey);
-      assert.isTrue(bookAccount.chapterReaders[chapterIndex].some(
+      assert.isTrue(bookAccount.chapters[chapterIndex].readers.some(
         (pubkey) => pubkey.equals(reader1.publicKey)
       ));
 

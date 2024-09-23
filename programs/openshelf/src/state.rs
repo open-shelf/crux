@@ -4,13 +4,20 @@ use anchor_lang::prelude::*;
 pub struct Book {
     pub author: Pubkey,
     pub title: String,
-    pub chapter_prices: Vec<u64>,
+    pub meta_url: String,
     pub full_book_price: u64,
     pub total_stake: u64,
-    pub readers: Vec<Pubkey>,
-    pub chapter_readers: Vec<Vec<Pubkey>>,
-    pub chapters: Vec<String>,
+    pub chapters: Vec<Chapter>,
     pub stakes: Vec<Stake>,
+    pub readers: Vec<Pubkey>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct Chapter {
+    pub price: u64,
+    pub url: String,
+    pub index: u8,
+    pub readers: Vec<Pubkey>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

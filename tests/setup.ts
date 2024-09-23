@@ -17,8 +17,14 @@ export const setup = async () => {
   const platform = anchor.web3.Keypair.generate(); 
 
   const bookTitle = "The Great Gatsby";
-  const chapterPrices = [100000000, 200000000, 300000000]; // 0.1 SOL, 0.2 SOL, 0.3 SOL
-  const fullBookPrice = new anchor.BN(500000000); // 0.5 SOL
+  const metaUrl = "https://example.com/meta"; // Add meta_url parameter
+  
+  // Adjust chapter prices to total 1 SOL
+  const chapterPrices = [
+    0.3 * anchor.web3.LAMPORTS_PER_SOL,
+    0.3 * anchor.web3.LAMPORTS_PER_SOL,
+    0.4 * anchor.web3.LAMPORTS_PER_SOL
+  ].map(price => Math.floor(price)); // Ensure integer values
 
   // Airdrop SOL to all accounts
   const accounts = [author, reader1, reader2, staker1, staker2, platform];
@@ -48,7 +54,7 @@ export const setup = async () => {
     staker2,
     platform,
     bookTitle,
+    metaUrl, // Return meta_url
     chapterPrices,
-    fullBookPrice,
   };
 };

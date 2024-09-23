@@ -2,20 +2,16 @@ import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { setup } from "./setup";
 
-describe("Purchase Full Book with Multiple Stakers", () => {
-  it("Can purchase a full book and distribute earnings to multiple stakers", async () => {
-    const { program, bookKeypair, author, reader2, staker1, staker2, platform, bookTitle, chapterPrices, fullBookPrice } = await setup();
+describe("Stake on Book", () => {
+  it("Can stake on a book and distribute earnings correctly", async () => {
+    const { program, bookKeypair, author, reader2, staker1, staker2, platform, bookTitle, metaUrl, chapterPrices } = await setup();
 
     try {
-      // Print the book price
-      console.log("Full book price:", fullBookPrice.toNumber() / anchor.web3.LAMPORTS_PER_SOL, "SOL");
-
       // Add a book
       await program.methods
         .addBook(
           bookTitle,
-          chapterPrices.map((price) => new anchor.BN(price)),
-          fullBookPrice
+          metaUrl
         )
         .accounts({
           book: bookKeypair.publicKey,
@@ -24,6 +20,25 @@ describe("Purchase Full Book with Multiple Stakers", () => {
         })
         .signers([bookKeypair, author])
         .rpc();
+
+      // Add chapters
+      const chapterUrls = [
+        "https://example.com/chapter1",
+        "https://example.com/chapter2",
+        "https://example.com/chapter3",
+      ];
+
+      for (let i = 0; i < chapterUrls.length; i++) {
+        await program.methods
+          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i]))
+          .accounts({
+            book: bookKeypair.publicKey,
+            author: author.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
+          .signers([author])
+          .rpc();
+      }
 
       // Stake on the book - Staker 1
       const stakeAmount1 = new anchor.BN(1 * anchor.web3.LAMPORTS_PER_SOL); // 1 SOL stake
@@ -38,7 +53,7 @@ describe("Purchase Full Book with Multiple Stakers", () => {
         .rpc();
 
       // Stake on the book - Staker 2
-      const stakeAmount2 = new anchor.BN(3 * anchor.web3.LAMPORTS_PER_SOL); // 2 SOL stake
+      const stakeAmount2 = new anchor.BN(3 * anchor.web3.LAMPORTS_PER_SOL); // 3 SOL stake
       await program.methods
         .stakeOnBook(stakeAmount2)
         .accounts({
@@ -74,9 +89,15 @@ describe("Purchase Full Book with Multiple Stakers", () => {
       const finalBookBalance = await program.provider.connection.getBalance(bookKeypair.publicKey);
       const finalPlatformBalance = await program.provider.connection.getBalance(platform.publicKey);
 
-      const expectedAuthorPayment = fullBookPrice.toNumber() * 0.7; // 70% to author
-      const expectedStakersPayment = fullBookPrice.toNumber() * 0.2; // 20% to book account (for stakers)
-      const expectedPlatformPayment = fullBookPrice.toNumber() * 0.1; // 10% to platform
+      const fullBookPrice = chapterPrices.reduce((acc, price) => acc + price, 0);
+      console.log("Full book price:", fullBookPrice / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+      assert.equal(fullBookPrice, anchor.web3.LAMPORTS_PER_SOL, "Full book price should be 1 SOL");
+
+      const expectedAuthorPayment = fullBookPrice * 0.7; // 70% to author
+      const expectedStakersPayment = fullBookPrice * 0.2; // 20% to book account (for stakers)
+      const expectedPlatformPayment = fullBookPrice * 0.1; // 10% to platform
+
+      console.log("Expected author payment:", expectedAuthorPayment / anchor.web3.LAMPORTS_PER_SOL, "SOL");
 
       assert.approximately(
         finalAuthorBalance - initialAuthorBalance,

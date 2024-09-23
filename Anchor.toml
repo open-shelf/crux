@@ -6,7 +6,7 @@ skip-lint = false
 
 [programs.localnet]
 opencore = "HQdP3fdSLiDKGfBLivhyxocKix2kEkFDCE8crBRGFkkD"
-openshelf = "CHvjheWKjEgv4xofs9jdKE1EA6tLSzpxbdptpyRFZpYE"
+openshelf = "2Gn5mpTUDpcRZ5LFiFeKAH1YisCAM9yDiCG5gXFoVMRW"
 
 [registry]
 url = "https://api.apr.dev"

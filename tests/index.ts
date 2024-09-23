@@ -11,6 +11,8 @@ describe('OpenShelf Tests', () => {
     require('./purchase_chapter');
     require('./purchase_full_book');
     require('./stake_on_book');
+    require('./verify_readers_and_stakes'); // Include the new test file
+    require('./filter_books'); // Include the new test file
 });
 
 after(() => {

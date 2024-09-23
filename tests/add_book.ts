@@ -4,14 +4,13 @@ import { setup } from "./setup";
 
 describe("Add Book", () => {
   it("Can add a book", async () => {
-    const { program, bookKeypair, author, bookTitle, chapterPrices, fullBookPrice } = await setup();
+    const { program, bookKeypair, author, bookTitle, metaUrl } = await setup();
 
     try {
       await program.methods
         .addBook(
           bookTitle,
-          chapterPrices.map((price) => new anchor.BN(price)),
-          fullBookPrice
+          metaUrl // Add meta_url parameter
         )
         .accounts({
           book: bookKeypair.publicKey,
@@ -23,14 +22,10 @@ describe("Add Book", () => {
 
       const bookAccount = await program.account.book.fetch(bookKeypair.publicKey);
       assert.equal(bookAccount.title, bookTitle);
-      assert.deepEqual(
-        bookAccount.chapterPrices.map((price) => price.toNumber()),
-        chapterPrices
-      );
-      assert.equal(bookAccount.fullBookPrice.toNumber(), fullBookPrice.toNumber());
-      assert.equal(bookAccount.totalStake.toNumber(), 0);
+      assert.equal(bookAccount.metaUrl, metaUrl); // Change meta_url to metaUrl
+      assert.equal(bookAccount.fullBookPrice.toNumber(), 0); // Change full_book_price to fullBookPrice
+      assert.equal(bookAccount.totalStake.toNumber(), 0); // Change total_stake to totalStake
       assert.deepEqual(bookAccount.readers, []);
-      assert.deepEqual(bookAccount.chapterReaders, [[], [], []]);
       assert.deepEqual(bookAccount.chapters, []);
       assert.deepEqual(bookAccount.stakes, []);
 

@@ -4,15 +4,14 @@ import { setup } from "./setup";
 
 describe("Purchase Full Book", () => {
   it("Can purchase a full book and distribute earnings", async () => {
-    const { program, bookKeypair, author, reader2, staker1, platform, bookTitle, chapterPrices, fullBookPrice } = await setup();
+    const { program, bookKeypair, author, reader2, staker1, platform, bookTitle, metaUrl, chapterPrices } = await setup();
 
     try {
       // Add a book
       await program.methods
         .addBook(
           bookTitle,
-          chapterPrices.map((price) => new anchor.BN(price)),
-          fullBookPrice
+          metaUrl // Add meta_url parameter
         )
         .accounts({
           book: bookKeypair.publicKey,
@@ -21,6 +20,25 @@ describe("Purchase Full Book", () => {
         })
         .signers([bookKeypair, author])
         .rpc();
+
+      // Add chapters
+      const chapterUrls = [
+        "https://example.com/chapter1",
+        "https://example.com/chapter2",
+        "https://example.com/chapter3",
+      ];
+
+      for (let i = 0; i < chapterUrls.length; i++) {
+        await program.methods
+          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i])) // Convert chapterPrices to BN
+          .accounts({
+            book: bookKeypair.publicKey,
+            author: author.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
+          .signers([author])
+          .rpc();
+      }
 
       // Stake on the book
       const stakeAmount = new anchor.BN(1 * anchor.web3.LAMPORTS_PER_SOL); // 1 SOL stake
@@ -59,9 +77,14 @@ describe("Purchase Full Book", () => {
       const finalBookBalance = await program.provider.connection.getBalance(bookKeypair.publicKey);
       const finalPlatformBalance = await program.provider.connection.getBalance(platform.publicKey);
 
-      const expectedAuthorPayment = fullBookPrice.toNumber() * 0.7; // 70% to author
-      const expectedBookPayment = fullBookPrice.toNumber() * 0.2; // 20% to book account (for stakers)
-      const expectedPlatformPayment = fullBookPrice.toNumber() * 0.1; // 10% to platform
+      const fullBookPrice = chapterPrices.reduce((acc, price) => acc + price, 0);
+      console.log("Full book price:", fullBookPrice / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+
+      const expectedAuthorPayment = fullBookPrice * 0.7; // 70% to author
+      const expectedBookPayment = fullBookPrice * 0.2; // 20% to book account (for stakers)
+      const expectedPlatformPayment = fullBookPrice * 0.1; // 10% to platform
+
+      console.log("Expected author payment:", expectedAuthorPayment / anchor.web3.LAMPORTS_PER_SOL, "SOL");
 
       assert.approximately(
         finalAuthorBalance - initialAuthorBalance,
@@ -96,8 +119,8 @@ describe("Purchase Full Book", () => {
       );
 
       // Check that all chapters are marked as read for the buyer
-      for (let chapterReaders of bookAccount.chapterReaders) {
-        assert.isTrue(chapterReaders.some(
+      for (let chapter of bookAccount.chapters) {
+        assert.isTrue(chapter.readers.some(
           (pubkey) => pubkey.equals(reader2.publicKey)
         ), "All chapters should be marked as read for the buyer");
       }

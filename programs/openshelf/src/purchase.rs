@@ -7,15 +7,17 @@ pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Res
     let buyer_key = *ctx.accounts.buyer.key;
 
     require!(
-        chapter_index < book.chapter_prices.len() as u8,
+        chapter_index < book.chapters.len() as u8,
         ProgramErrorCode::InvalidChapterIndex
     );
     require!(
-        !book.chapter_readers[chapter_index as usize].contains(&buyer_key),
+        !book.chapters[chapter_index as usize]
+            .readers
+            .contains(&buyer_key),
         ProgramErrorCode::AlreadyPurchased
     );
 
-    let price = book.chapter_prices[chapter_index as usize];
+    let price = book.chapters[chapter_index as usize].price;
     let author_share = price * 70 / 100; // 70% to author
     let stakers_share = price * 20 / 100; // 20% to stakers
     let platform_share = price * 10 / 100; // 10% to platform
@@ -50,13 +52,15 @@ pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Res
         }
     }
 
-    book.chapter_readers[chapter_index as usize].push(buyer_key);
+    book.chapters[chapter_index as usize]
+        .readers
+        .push(buyer_key);
 
     // Check if the buyer has purchased all chapters
     if book
-        .chapter_readers
+        .chapters
         .iter()
-        .all(|readers| readers.contains(&buyer_key))
+        .all(|chapter| chapter.readers.contains(&buyer_key))
     {
         book.readers.push(buyer_key);
     }
@@ -121,9 +125,9 @@ pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
     }
 
     book.readers.push(buyer_key);
-    for chapter_readers in book.chapter_readers.iter_mut() {
-        if !chapter_readers.contains(&buyer_key) {
-            chapter_readers.push(buyer_key);
+    for chapter in book.chapters.iter_mut() {
+        if !chapter.readers.contains(&buyer_key) {
+            chapter.readers.push(buyer_key);
         }
     }
 

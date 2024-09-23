@@ -4,15 +4,14 @@ import { setup } from "./setup";
 
 describe("Add Chapter", () => {
   it("Can add chapters", async () => {
-    const { program, bookKeypair, author, bookTitle, chapterPrices, fullBookPrice } = await setup();
+    const { program, bookKeypair, author, bookTitle, metaUrl, chapterPrices } = await setup();
 
     try {
       // First, add a book
       await program.methods
         .addBook(
           bookTitle,
-          chapterPrices.map((price) => new anchor.BN(price)),
-          fullBookPrice
+          metaUrl // Add meta_url parameter
         )
         .accounts({
           book: bookKeypair.publicKey,
@@ -31,9 +30,9 @@ describe("Add Chapter", () => {
 
       for (let i = 0; i < chapterUrls.length; i++) {
         await program.methods
-          .addChapter(chapterUrls[i], i)
+          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i])) // Convert chapterPrices to BN
           .accounts({
-            book: bookKeypair.publicKey,
+            book: bookKeypair.publicKey, // Ensure the book account is provided
             author: author.publicKey,
             systemProgram: anchor.web3.SystemProgram.programId,
           })
@@ -42,7 +41,24 @@ describe("Add Chapter", () => {
       }
 
       const bookAccount = await program.account.book.fetch(bookKeypair.publicKey);
-      assert.deepEqual(bookAccount.chapters, chapterUrls);
+      const expectedChapters = chapterUrls.map((url, index) => ({
+        url,
+        price: new anchor.BN(chapterPrices[index]),
+        index,
+        readers: [],
+      }));
+
+      // Convert BN to number for comparison
+      const actualChapters = bookAccount.chapters.map((chapter) => ({
+        ...chapter,
+        price: chapter.price.toNumber(),
+      }));
+      const expectedChaptersForComparison = expectedChapters.map((chapter) => ({
+        ...chapter,
+        price: chapter.price.toNumber(),
+      }));
+
+      assert.deepEqual(actualChapters, expectedChaptersForComparison);
 
       console.log("Chapters added successfully:", bookAccount.chapters);
     } catch (error) {
