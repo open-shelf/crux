@@ -1,0 +1,5 @@
+OpenShelf
+
+It is a new media paradigm. The concept is simple. You pay for what you use. If you are reading a book, you can buy each chapter instead of the whole book. When reading a novel for example, you can continue to read the next chapter by paying for it. In case of other media like music, video or games. You pay for how long you listen or play. 
+
+Now, there is another aspect to this, where after consuming a content, the user can stake on the media they like if they see a potential to grow. For example, Alice writes a book and Bob reads the book and likes it. Bob can stake on the book and put any amount on the pool. Once, staked whenever the chapter is bought and read by another person. The profit will be shared between Alice who gets 70 percent, the platform 15 percent and the staking pool which gets 15 percent which will be divided amongst the stakers based on the amount they staked.
