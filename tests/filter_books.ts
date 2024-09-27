@@ -4,7 +4,7 @@ import { setup } from "./setup";
 
 describe("Filter Books", () => {
   it("Should filter books by author and number of stakers", async () => {
-    const { program, bookKeypair, author, reader1, reader2, staker1, staker2, platform, bookTitle, metaUrl, chapterPrices } = await setup();
+    const { program, bookKeypair, author, staker1, staker2, bookTitle, metaUrl, chapterPrices } = await setup();
 
     try {
       // Add a book
@@ -41,7 +41,7 @@ describe("Filter Books", () => {
       }
 
       // Stake on the book - Staker 1
-      const stakeAmount1 = new anchor.BN(1 * anchor.web3.LAMPORTS_PER_SOL); // 1 SOL stake
+      const stakeAmount1 = new anchor.BN(1 * anchor.web3.LAMPORTS_PER_SOL);
       await program.methods
         .stakeOnBook(stakeAmount1)
         .accounts({
@@ -53,7 +53,7 @@ describe("Filter Books", () => {
         .rpc();
 
       // Stake on the book - Staker 2
-      const stakeAmount2 = new anchor.BN(3 * anchor.web3.LAMPORTS_PER_SOL); // 3 SOL stake
+      const stakeAmount2 = new anchor.BN(3 * anchor.web3.LAMPORTS_PER_SOL);
       await program.methods
         .stakeOnBook(stakeAmount2)
         .accounts({
@@ -64,18 +64,16 @@ describe("Filter Books", () => {
         .signers([staker2])
         .rpc();
 
-      // Fetch all books
-      const books = await program.account.book.all();
+      // Fetch the book account
+      const bookAccount = await program.account.book.fetch(bookKeypair.publicKey);
 
-      // Filter books by author
-      const booksByAuthor = books.filter(book => book.account.author.equals(author.publicKey));
-      assert.isTrue(booksByAuthor.length > 0, "There should be books by the author");
+      // Check if the author matches
+      assert.isTrue(bookAccount.author.equals(author.publicKey), "The book should be authored by the correct author");
 
-      // Filter books by number of stakers
-      const booksByStakers = books.filter(book => book.account.stakes.length >= 2);
-      assert.isTrue(booksByStakers.length > 0, "There should be books with at least 2 stakers");
+      // Check the number of stakers
+      assert.isTrue(bookAccount.stakes.length >= 2, "The book should have at least 2 stakers");
 
-      console.log("Books filtered successfully");
+      console.log("Book filtered successfully");
     } catch (error) {
       console.error("Error filtering books:", error);
       throw error;
