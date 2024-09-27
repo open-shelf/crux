@@ -12,7 +12,7 @@ use chapter::*;
 use purchase::*;
 use stake::*;
 
-declare_id!("CHvjheWKjEgv4xofs9jdKE1EA6tLSzpxbdptpyRFZpYE");
+declare_id!("7A3dUgUcGThe6b3Z1hUegX94kjWHvhc6RT8RtYPz7KqR");
 
 #[program]
 pub mod openshelf {
