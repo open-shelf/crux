@@ -5,7 +5,7 @@ pub fn add_book(ctx: Context<AddBook>, title: String, meta_url: String) -> Resul
     let book = &mut ctx.accounts.book;
     book.author = *ctx.accounts.author.key;
     book.title = title;
-    book.meta_url = meta_url; // Add meta_url field
+    book.meta_url = meta_url;
     book.full_book_price = 0;
     book.total_stake = 0;
     book.chapters = Vec::new();

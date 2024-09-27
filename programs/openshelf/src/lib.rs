@@ -12,7 +12,7 @@ use chapter::*;
 use purchase::*;
 use stake::*;
 
-declare_id!("7A3dUgUcGThe6b3Z1hUegX94kjWHvhc6RT8RtYPz7KqR");
+declare_id!("4ndujP9V3z319gyw1rYSvqjjzc71UXUZgd42L9GjHe1d");
 
 #[program]
 pub mod openshelf {
@@ -27,8 +27,9 @@ pub mod openshelf {
         chapter_url: String,
         chapter_index: u8,
         price: u64,
+        name: String,
     ) -> Result<()> {
-        chapter::add_chapter(ctx, chapter_url, chapter_index, price)
+        chapter::add_chapter(ctx, chapter_url, chapter_index, price, name)
     }
 
     pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Result<()> {

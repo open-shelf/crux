@@ -7,6 +7,7 @@ pub fn add_chapter(
     chapter_url: String,
     chapter_index: u8,
     price: u64,
+    name: String,
 ) -> Result<()> {
     let book = &mut ctx.accounts.book;
 
@@ -21,6 +22,7 @@ pub fn add_chapter(
         url: chapter_url,
         index: chapter_index,
         readers: Vec::new(),
+        name: name,
     };
 
     if chapter_index as usize == book.chapters.len() {

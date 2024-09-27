@@ -9,10 +9,7 @@ describe("Stake on Book", () => {
     try {
       // Add a book
       await program.methods
-        .addBook(
-          bookTitle,
-          metaUrl
-        )
+        .addBook(bookTitle, metaUrl)
         .accounts({
           book: bookKeypair.publicKey,
           author: author.publicKey,
@@ -27,10 +24,11 @@ describe("Stake on Book", () => {
         "https://example.com/chapter2",
         "https://example.com/chapter3",
       ];
+      const chapterNames = ["Chapter 1", "Chapter 2", "Chapter 3"];
 
       for (let i = 0; i < chapterUrls.length; i++) {
         await program.methods
-          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i]))
+          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i]), chapterNames[i])
           .accounts({
             book: bookKeypair.publicKey,
             author: author.publicKey,

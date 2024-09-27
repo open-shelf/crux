@@ -16,6 +16,7 @@ pub struct Book {
 pub struct Chapter {
     pub price: u64,
     pub url: String,
+    pub name: String,
     pub index: u8,
     pub readers: Vec<Pubkey>,
 }

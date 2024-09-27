@@ -1,5 +1,11 @@
-{
-  "address": "4ndujP9V3z319gyw1rYSvqjjzc71UXUZgd42L9GjHe1d",
+/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/openshelf.json`.
+ */
+export type Openshelf = {
+  "address": "7A3dUgUcGThe6b3Z1hUegX94kjWHvhc6RT8RtYPz7KqR",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -8,7 +14,7 @@
   },
   "instructions": [
     {
-      "name": "add_book",
+      "name": "addBook",
       "discriminator": [
         181,
         117,
@@ -31,7 +37,7 @@
           "signer": true
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -41,13 +47,13 @@
           "type": "string"
         },
         {
-          "name": "meta_url",
+          "name": "metaUrl",
           "type": "string"
         }
       ]
     },
     {
-      "name": "add_chapter",
+      "name": "addChapter",
       "discriminator": [
         70,
         219,
@@ -72,17 +78,17 @@
           ]
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "chapter_url",
+          "name": "chapterUrl",
           "type": "string"
         },
         {
-          "name": "chapter_index",
+          "name": "chapterIndex",
           "type": "u8"
         },
         {
@@ -96,7 +102,7 @@
       ]
     },
     {
-      "name": "purchase_chapter",
+      "name": "purchaseChapter",
       "discriminator": [
         123,
         139,
@@ -126,19 +132,19 @@
           "writable": true
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "chapter_index",
+          "name": "chapterIndex",
           "type": "u8"
         }
       ]
     },
     {
-      "name": "purchase_full_book",
+      "name": "purchaseFullBook",
       "discriminator": [
         114,
         134,
@@ -168,14 +174,14 @@
           "writable": true
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "stake_on_book",
+      "name": "stakeOnBook",
       "discriminator": [
         63,
         5,
@@ -197,7 +203,7 @@
           "signer": true
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -211,7 +217,7 @@
   ],
   "accounts": [
     {
-      "name": "Book",
+      "name": "book",
       "discriminator": [
         121,
         34,
@@ -227,23 +233,23 @@
   "errors": [
     {
       "code": 6000,
-      "name": "AlreadyPurchased",
+      "name": "alreadyPurchased",
       "msg": "You have already purchased this chapter or book"
     },
     {
       "code": 6001,
-      "name": "NotQualifiedForStaking",
+      "name": "notQualifiedForStaking",
       "msg": "You must purchase all chapters or the full book before staking"
     },
     {
       "code": 6002,
-      "name": "InvalidChapterIndex",
+      "name": "invalidChapterIndex",
       "msg": "Invalid chapter index"
     }
   ],
   "types": [
     {
-      "name": "Book",
+      "name": "book",
       "type": {
         "kind": "struct",
         "fields": [
@@ -256,15 +262,15 @@
             "type": "string"
           },
           {
-            "name": "meta_url",
+            "name": "metaUrl",
             "type": "string"
           },
           {
-            "name": "full_book_price",
+            "name": "fullBookPrice",
             "type": "u64"
           },
           {
-            "name": "total_stake",
+            "name": "totalStake",
             "type": "u64"
           },
           {
@@ -272,7 +278,7 @@
             "type": {
               "vec": {
                 "defined": {
-                  "name": "Chapter"
+                  "name": "chapter"
                 }
               }
             }
@@ -282,7 +288,7 @@
             "type": {
               "vec": {
                 "defined": {
-                  "name": "Stake"
+                  "name": "stake"
                 }
               }
             }
@@ -297,7 +303,7 @@
       }
     },
     {
-      "name": "Chapter",
+      "name": "chapter",
       "type": {
         "kind": "struct",
         "fields": [
@@ -327,7 +333,7 @@
       }
     },
     {
-      "name": "Stake",
+      "name": "stake",
       "type": {
         "kind": "struct",
         "fields": [
@@ -347,4 +353,4 @@
       }
     }
   ]
-}
+};

@@ -7,7 +7,7 @@ describe("Fetch_info", () => {
     const { program, bookKeypair, author, bookTitle, metaUrl, chapterPrices } = await setup();
 
     try {
-      // First, add a book
+      // Add a book
       await program.methods
         .addBook(bookTitle, metaUrl)
         .accounts({
@@ -18,16 +18,17 @@ describe("Fetch_info", () => {
         .signers([bookKeypair, author])
         .rpc();
 
-      // Now add chapters
+      // Add chapters
       const chapterUrls = [
         "https://example.com/chapter1",
         "https://example.com/chapter2",
         "https://example.com/chapter3",
       ];
+      const chapterNames = ["Chapter 1", "Chapter 2", "Chapter 3"];
 
       for (let i = 0; i < chapterUrls.length; i++) {
         await program.methods
-          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i]))
+          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i]), chapterNames[i])
           .accounts({
             book: bookKeypair.publicKey,
             author: author.publicKey,
@@ -49,7 +50,10 @@ describe("Fetch_info", () => {
         meta_url: bookAccount.metaUrl,
         fullBookPrice: bookAccount.fullBookPrice.toNumber(),
         totalStake: bookAccount.totalStake.toNumber(),
-        chapters: bookAccount.chapters.map(chapter => chapter.url),
+        chapters: bookAccount.chapters.map(chapter => ({
+          url: chapter.url,
+          name: chapter.name
+        })),
         stakes: bookAccount.stakes.map(stake => ({
           staker: stake.staker.toString(),
           amount: stake.amount.toNumber()
@@ -68,7 +72,7 @@ describe("Fetch_info", () => {
       const formattedChapterDetails = bookAccount.chapters.map((chapter, index) => ({
         index: chapter.index,
         is_purchased: false, // Assuming this information is not stored on-chain
-        name: `Chapter ${index + 1}`, // Assuming chapter names are not stored separately
+        name: chapter.name,
         url: chapter.url,
         price: chapter.price.toNumber()
       }));
@@ -80,6 +84,7 @@ describe("Fetch_info", () => {
       formattedChapterDetails.forEach((chapter, index) => {
         assert.equal(chapter.index, index);
         assert.equal(chapter.url, chapterUrls[index]);
+        assert.equal(chapter.name, chapterNames[index]);
         assert.equal(chapter.price, chapterPrices[index]);
       });
 
