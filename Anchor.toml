@@ -7,6 +7,9 @@ skip-lint = false
 [programs.localnet]
 openshelf = "7A3dUgUcGThe6b3Z1hUegX94kjWHvhc6RT8RtYPz7KqR"
 
+[programs.devnet]
+openshelf = "7A3dUgUcGThe6b3Z1hUegX94kjWHvhc6RT8RtYPz7KqR"
+
 [registry]
 url = "https://api.apr.dev"
 

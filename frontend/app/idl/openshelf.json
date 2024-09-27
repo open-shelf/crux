@@ -1,0 +1,286 @@
+{
+  "address": "3WDNWWERrHwjsL9LMKkMuwErXmR53NtaBqHig5ABUyEx",
+  "metadata": {
+    "name": "openshelf",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "add_book",
+      "discriminator": [181, 117, 249, 173, 108, 163, 209, 238],
+      "accounts": [
+        {
+          "name": "book",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "author",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "meta_url",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "add_chapter",
+      "discriminator": [70, 219, 222, 77, 39, 136, 132, 233],
+      "accounts": [
+        {
+          "name": "book",
+          "writable": true
+        },
+        {
+          "name": "author",
+          "writable": true,
+          "signer": true,
+          "relations": ["book"]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "chapter_url",
+          "type": "string"
+        },
+        {
+          "name": "chapter_index",
+          "type": "u8"
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "purchase_chapter",
+      "discriminator": [123, 139, 195, 216, 156, 158, 134, 67],
+      "accounts": [
+        {
+          "name": "book",
+          "writable": true
+        },
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "author",
+          "writable": true
+        },
+        {
+          "name": "platform",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "chapter_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "purchase_full_book",
+      "discriminator": [114, 134, 89, 208, 117, 183, 37, 232],
+      "accounts": [
+        {
+          "name": "book",
+          "writable": true
+        },
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "author",
+          "writable": true
+        },
+        {
+          "name": "platform",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "stake_on_book",
+      "discriminator": [63, 5, 158, 206, 162, 224, 240, 1],
+      "accounts": [
+        {
+          "name": "book",
+          "writable": true
+        },
+        {
+          "name": "staker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Book",
+      "discriminator": [121, 34, 121, 35, 91, 62, 85, 222]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "AlreadyPurchased",
+      "msg": "You have already purchased this chapter or book"
+    },
+    {
+      "code": 6001,
+      "name": "NotQualifiedForStaking",
+      "msg": "You must purchase all chapters or the full book before staking"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidChapterIndex",
+      "msg": "Invalid chapter index"
+    }
+  ],
+  "types": [
+    {
+      "name": "Book",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "author",
+            "type": "pubkey"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "meta_url",
+            "type": "string"
+          },
+          {
+            "name": "full_book_price",
+            "type": "u64"
+          },
+          {
+            "name": "total_stake",
+            "type": "u64"
+          },
+          {
+            "name": "chapters",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Chapter"
+                }
+              }
+            }
+          },
+          {
+            "name": "stakes",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Stake"
+                }
+              }
+            }
+          },
+          {
+            "name": "readers",
+            "type": {
+              "vec": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Chapter",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "url",
+            "type": "string"
+          },
+          {
+            "name": "index",
+            "type": "u8"
+          },
+          {
+            "name": "readers",
+            "type": {
+              "vec": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Stake",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "staker",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "earnings",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}
