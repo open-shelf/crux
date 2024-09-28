@@ -1,0 +1,54 @@
+Create the Transfer Program
+Let's start by opening lib.rs and deleting the starter code. Once you have a blank slate, we can start building our program. First, we will need to import some dependencies. Add the following to the top of the file:
+use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Token, TokenAccount, Transfer as SplTransfer};
+use solana_program::system_instruction;
+declare_id!("11111111111111111111111111111111");
+
+These imports will allow us to use the Anchor framework, the SPL token program, and the system program. Solana Playground will automatically update declare_id! when we deploy our program.
+Create a Transfer Lamports (SOL) Function
+To create a function for transferring SOL (or lamports), we must define a struct for our transfer context. Add the following to your program:
+#[derive(Accounts)]
+pub struct TransferLamports<'info> {
+    #[account(mut)]
+    pub from: Signer<'info>,
+    #[account(mut)]
+    pub to: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+The struct defines a from account that will sign the transaction and send SOL, a to account that will receive the SOL, and the system program to handle the transfer. The #[account(mut)] attribute indicates that the program will modify the account.
+Next, we'll create the function that will handle the transfer. Add the following to your program:
+#[program]
+pub mod solana_lamport_transfer {
+    use super::*;
+    pub fn transfer_lamports(ctx: Context<TransferLamports>, amount: u64) -> Result<()> {
+        let from_account = &ctx.accounts.from;
+        let to_account = &ctx.accounts.to;
+
+        // Create the transfer instruction
+        let transfer_instruction = system_instruction::transfer(from_account.key, to_account.key, amount);
+
+        // Invoke the transfer instruction
+        anchor_lang::solana_program::program::invoke_signed(
+            &transfer_instruction,
+            &[
+                from_account.to_account_info(),
+                to_account.clone(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+            &[],
+        )?;
+
+        Ok(())
+    }
+}
+
+Here is a brief explanation of the different parts of this snippet:
+The #[program] attribute marks the module as an Anchor program. It generates the required boilerplate to define the program's entry point and automatically handles the account validation and deserialization.
+Inside the solana_lamport_transfer module, we import necessary items from the parent module with use super::*;.
+The transfer_lamports function takes a Context and an amount as its arguments. The Context contains the required account information for the transaction, and the amount is the number of lamports to transfer.
+We create references to the from_account and to_account from the context, which will be used for the transfer.
+The system_instruction::transfer function creates a transfer instruction that takes the from_account's public key, to_account's public key, and the amount to be transferred as arguments.
+The anchor_lang::solana_program::program::invoke_signed function invokes the transfer instruction and uses the transaction's signer (from_account). It takes the transfer instruction, an array of account information for the from_account, to_account, and the system_program, and an empty array for the signers.
+The transfer_lamports function returns an Ok(()) to indicate a successful execution.

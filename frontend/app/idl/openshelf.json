@@ -1,5 +1,5 @@
 {
-  "address": "4ndujP9V3z319gyw1rYSvqjjzc71UXUZgd42L9GjHe1d",
+  "address": "AAekmk2UZgmN1Av5EC5uHhuqENnXzXeRvjVNs514u653",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -94,6 +94,35 @@
           "type": "string"
         }
       ]
+    },
+    {
+      "name": "claim_rewards",
+      "discriminator": [
+        4,
+        144,
+        132,
+        71,
+        116,
+        23,
+        151,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "book",
+          "writable": true
+        },
+        {
+          "name": "staker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "purchase_chapter",
@@ -239,6 +268,21 @@
       "code": 6002,
       "name": "InvalidChapterIndex",
       "msg": "Invalid chapter index"
+    },
+    {
+      "code": 6003,
+      "name": "InsufficientFunds",
+      "msg": "InsufficientFunds"
+    },
+    {
+      "code": 6004,
+      "name": "StakeNotFound",
+      "msg": "Stake not found for this staker"
+    },
+    {
+      "code": 6005,
+      "name": "NoRewardsToClaim",
+      "msg": "No rewards to claim"
     }
   ],
   "types": [

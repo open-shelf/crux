@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/openshelf.json`.
  */
 export type Openshelf = {
-  "address": "7A3dUgUcGThe6b3Z1hUegX94kjWHvhc6RT8RtYPz7KqR",
+  "address": "AAekmk2UZgmN1Av5EC5uHhuqENnXzXeRvjVNs514u653",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -100,6 +100,35 @@ export type Openshelf = {
           "type": "string"
         }
       ]
+    },
+    {
+      "name": "claimRewards",
+      "discriminator": [
+        4,
+        144,
+        132,
+        71,
+        116,
+        23,
+        151,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "book",
+          "writable": true
+        },
+        {
+          "name": "staker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "purchaseChapter",
@@ -245,6 +274,21 @@ export type Openshelf = {
       "code": 6002,
       "name": "invalidChapterIndex",
       "msg": "Invalid chapter index"
+    },
+    {
+      "code": 6003,
+      "name": "insufficientFunds",
+      "msg": "insufficientFunds"
+    },
+    {
+      "code": 6004,
+      "name": "stakeNotFound",
+      "msg": "Stake not found for this staker"
+    },
+    {
+      "code": 6005,
+      "name": "noRewardsToClaim",
+      "msg": "No rewards to claim"
     }
   ],
   "types": [

@@ -5,6 +5,7 @@ import { Program, AnchorProvider, Idl, setProvider } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import idl from "./idl/openshelf.json";
+import { ProgramUtils } from "./utils/programUtils";
 
 // Assuming you have a type definition for your program
 import { Openshelf } from "./types/openshelf";
@@ -12,7 +13,7 @@ import { Openshelf } from "./types/openshelf";
 const WalletSection: React.FC = () => {
   const { connection } = useConnection();
   const { publicKey, signTransaction, signAllTransactions } = useWallet();
-  const [program, setProgram] = useState<Program<Openshelf> | null>(null);
+  const [programUtils, setProgramUtils] = useState<ProgramUtils | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [bookPublicKey, setBookPublicKey] = useState<string>("");
   const [bookDetails, setBookDetails] = useState<any>(null);
@@ -33,30 +34,8 @@ const WalletSection: React.FC = () => {
             signTransaction,
             signAllTransactions,
           };
-          const provider = new AnchorProvider(
-            connection,
-            wallet,
-            AnchorProvider.defaultOptions()
-          );
-          setProvider(provider);
-
-          console.log("IDL address:", idl.address);
-
-          let programId: PublicKey;
-          try {
-            programId = new PublicKey(idl.address);
-          } catch (pubkeyError) {
-            console.error("Error creating PublicKey:", pubkeyError);
-            throw new Error(`Invalid program address: ${idl.address}`);
-          }
-
-          console.log("Program ID:", programId.toBase58());
-
-          const program = new Program(idl as Idl, provider);
-
-          console.log("Program initialized successfully");
-
-          setProgram(program);
+          const utils = new ProgramUtils(connection, wallet);
+          setProgramUtils(utils);
           setError(null);
 
           const endpoint = connection.rpcEndpoint;
@@ -90,81 +69,17 @@ const WalletSection: React.FC = () => {
     initializeProgram();
   }, [publicKey, signTransaction, signAllTransactions, connection]);
 
-  const runTests = async (
-    program: Program<Openshelf>,
-    provider: AnchorProvider
-  ) => {
-    try {
-      console.log("Running tests...");
-
-      // Test 1: Add a book
-      const book = anchor.web3.Keypair.generate();
-      const tx = await program.methods
-        .addBook("Test Book", "https://example.com/test-book")
-        .accounts({
-          book: book.publicKey,
-          author: provider.wallet.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([book])
-        .rpc();
-      console.log(
-        "Test 1 passed: Book added successfully. Transaction signature:",
-        tx
-      );
-
-      // Test 2: Fetch the added book
-      const fetchedBook = await program.account.book.fetch(book.publicKey);
-      console.assert(
-        fetchedBook.title === "Test Book",
-        "Book title should match"
-      );
-      console.assert(
-        fetchedBook.metaUrl === "https://example.com/test-book",
-        "Book meta URL should match"
-      );
-      console.log("Test 2 passed: Book fetched and verified");
-
-      // Test 3: Add a chapter
-      const chapterTx = await program.methods
-        .addChapter("https://example.com/chapter1", 0, new anchor.BN(1000000))
-        .accounts({
-          book: book.publicKey,
-          author: provider.wallet.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
-      console.log(
-        "Test 3 passed: Chapter added successfully. Transaction signature:",
-        chapterTx
-      );
-
-      // Add more tests as needed...
-    } catch (error: unknown) {
-      console.error("Error during tests:", error);
-      setError(`Error during tests: ${(error as Error).message}`);
-    }
-  };
-
   const addBook = async () => {
-    if (!program) {
+    if (!programUtils) {
       console.error("Program not initialized");
       return;
     }
     try {
       console.log("Adding book...");
-      const book = anchor.web3.Keypair.generate();
-      console.log("New book public key:", book.publicKey.toString());
-
-      const tx = await program.methods
-        .addBook("Test Book", "https://example.com/test-book")
-        .accounts({
-          book: book.publicKey,
-          author: program.provider.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([book])
-        .rpc();
+      const tx = await programUtils.addBook(
+        "Test Book",
+        "https://example.com/test-book"
+      );
       console.log("Transaction signature", tx);
     } catch (error: unknown) {
       console.error("Error adding book:", error);
@@ -172,44 +87,14 @@ const WalletSection: React.FC = () => {
     }
   };
 
-  const fetchBook = async (pubKey: anchor.web3.PublicKey) => {
-    if (!program) {
-      throw new Error("Program not initialized");
-    }
-
-    try {
-      const bookAccount = await program.account.book.fetch(pubKey);
-
-      const formattedBookDetails = {
-        author: bookAccount.author.toString(),
-        title: bookAccount.title,
-        meta_url: bookAccount.metaUrl,
-        fullBookPrice: bookAccount.fullBookPrice.toNumber(),
-        totalStake: bookAccount.totalStake.toNumber(),
-        chapters: bookAccount.chapters.map((chapter: any, index: number) => ({
-          index: chapter.index,
-          is_purchased: false,
-          name: `Chapter ${index + 1}`,
-          url: chapter.url,
-          price: chapter.price.toNumber(),
-        })),
-        stakes: bookAccount.stakes.map((stake: any) => ({
-          staker: stake.staker.toString(),
-          amount: stake.amount.toNumber(),
-        })),
-      };
-
-      return formattedBookDetails;
-    } catch (error) {
-      console.error("Error fetching book details:", error);
-      throw error;
-    }
-  };
-
   const handleFetchBook = async () => {
+    if (!programUtils) {
+      console.error("Program not initialized");
+      return;
+    }
     try {
       const pubKey = new PublicKey(bookPublicKey);
-      const details = await fetchBook(pubKey);
+      const details = await programUtils.fetchBook(pubKey);
       setBookDetails(details);
       console.log("Fetched Book Details:", details);
     } catch (error) {
@@ -219,25 +104,19 @@ const WalletSection: React.FC = () => {
   };
 
   const addChapter = async () => {
-    if (!program || !bookDetails) {
+    if (!programUtils || !bookDetails) {
       console.error("Program not initialized or book not fetched");
       return;
     }
     try {
       console.log("Adding chapter...");
-      const tx = await program.methods
-        .addChapter(
-          chapterUrl,
-          Number(chapterIndex),
-          new anchor.BN(Number(chapterPrice) * LAMPORTS_PER_SOL),
-          chapterName
-        )
-        .accounts({
-          book: new PublicKey(bookPublicKey),
-          author: program.provider.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+      const tx = await programUtils.addChapter(
+        new PublicKey(bookPublicKey),
+        chapterUrl,
+        Number(chapterIndex),
+        Number(chapterPrice) * LAMPORTS_PER_SOL,
+        chapterName
+      );
       console.log("Transaction signature", tx);
       await handleFetchBook(); // Refresh book details
     } catch (error: unknown) {
@@ -247,24 +126,17 @@ const WalletSection: React.FC = () => {
   };
 
   const purchaseChapter = async () => {
-    if (!program || !bookDetails) {
+    if (!programUtils || !bookDetails) {
       console.error("Program not initialized or book not fetched");
       return;
     }
     try {
       console.log("Purchasing chapter...");
-      const tx = await program.methods
-        .purchaseChapter(Number(purchaseChapterIndex))
-        .accounts({
-          book: new PublicKey(bookPublicKey),
-          buyer: program.provider.publicKey,
-          author: bookDetails.author,
-          platform: new PublicKey(
-            "DV5h5xRmWap6VwRVbXvvotgg41y1BZsHE3tEjMZhTL6L"
-          ), // Replace with actual platform public key
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+      const tx = await programUtils.purchaseChapter(
+        new PublicKey(bookPublicKey),
+        bookDetails.author,
+        Number(purchaseChapterIndex)
+      );
       console.log("Transaction signature", tx);
       await handleFetchBook(); // Refresh book details
     } catch (error: unknown) {
@@ -274,24 +146,16 @@ const WalletSection: React.FC = () => {
   };
 
   const purchaseFullBook = async () => {
-    if (!program || !bookDetails) {
+    if (!programUtils || !bookDetails) {
       console.error("Program not initialized or book not fetched");
       return;
     }
     try {
       console.log("Purchasing full book...");
-      const tx = await program.methods
-        .purchaseFullBook()
-        .accounts({
-          book: new PublicKey(bookPublicKey),
-          buyer: program.provider.publicKey,
-          author: bookDetails.author,
-          platform: new PublicKey(
-            "DV5h5xRmWap6VwRVbXvvotgg41y1BZsHE3tEjMZhTL6L"
-          ), // Replace with actual platform public key
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
+      const tx = await programUtils.purchaseFullBook(
+        new PublicKey(bookPublicKey),
+        bookDetails.author
+      );
       console.log("Transaction signature", tx);
       await handleFetchBook(); // Refresh book details
     } catch (error: unknown) {
@@ -301,19 +165,16 @@ const WalletSection: React.FC = () => {
   };
 
   const stakeOnBook = async () => {
-    if (!program || !bookDetails) {
+    if (!programUtils || !bookDetails) {
       console.error("Program not initialized or book not fetched");
       return;
     }
     try {
       console.log("Staking on book...");
-      const tx = await program.methods
-        .stakeOnBook(new anchor.BN(Number(stakeAmount) * LAMPORTS_PER_SOL))
-        .accounts({
-          book: new PublicKey(bookPublicKey),
-          staker: program.provider.publicKey,
-        })
-        .rpc();
+      const tx = await programUtils.stakeOnBook(
+        new PublicKey(bookPublicKey),
+        Number(stakeAmount) * LAMPORTS_PER_SOL
+      );
       console.log("Transaction signature", tx);
       await handleFetchBook(); // Refresh book details
     } catch (error: unknown) {
