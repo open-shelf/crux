@@ -7,6 +7,7 @@ import { Openshelf } from "../types/openshelf";
 export class ProgramUtils {
   private program: Program<Openshelf>;
   private provider: AnchorProvider;
+  private lastAddedBookPubKey: PublicKey | null = null;
 
   constructor(connection: Connection, wallet: any) {
     this.provider = new AnchorProvider(
@@ -34,6 +35,7 @@ export class ProgramUtils {
       .signers([book])
       .rpc();
 
+    this.lastAddedBookPubKey = book.publicKey;
     return tx;
   }
 
@@ -108,5 +110,21 @@ export class ProgramUtils {
       })
       .rpc();
     return tx;
+  }
+
+  // New method to claim stake earnings
+  async claimStakeEarnings(bookPubKey: PublicKey): Promise<string> {
+    const tx = await this.program.methods
+      .claimStakerEarnings()
+      .accounts({
+        book: bookPubKey,
+        staker: this.provider.wallet.publicKey,
+      })
+      .rpc();
+    return tx;
+  }
+
+  async getLastAddedBookPubKey(): Promise<PublicKey | null> {
+    return this.lastAddedBookPubKey;
   }
 }

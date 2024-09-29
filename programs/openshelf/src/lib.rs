@@ -12,7 +12,7 @@ use chapter::*;
 use purchase::*;
 use stake::*;
 
-declare_id!("AAekmk2UZgmN1Av5EC5uHhuqENnXzXeRvjVNs514u653");
+declare_id!("JmuTfDL4F9Fo8DfsTFh3gr7VguiX7euz9vwnddoQrUh");
 
 #[program]
 pub mod openshelf {
@@ -42,5 +42,9 @@ pub mod openshelf {
 
     pub fn stake_on_book(ctx: Context<StakeOnBook>, amount: u64) -> Result<()> {
         stake::stake_on_book(ctx, amount)
+    }
+
+    pub fn claim_staker_earnings(ctx: Context<ClaimStakerEarnings>) -> Result<()> {
+        stake::claim_staker_earnings(ctx)
     }
 }

@@ -10,6 +10,29 @@ import { ProgramUtils } from "./utils/programUtils";
 // Assuming you have a type definition for your program
 import { Openshelf } from "./types/openshelf";
 
+// New ErrorPopup component
+const ErrorPopup: React.FC<{ message: string; onClose: () => void }> = ({
+  message,
+  onClose,
+}) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 5000); // Auto-close after 5 seconds
+
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50 max-w-sm">
+      <p>{message}</p>
+      <button onClick={onClose} className="absolute top-1 right-2 text-white">
+        &times;
+      </button>
+    </div>
+  );
+};
+
 const WalletSection: React.FC = () => {
   const { connection } = useConnection();
   const { publicKey, signTransaction, signAllTransactions } = useWallet();
@@ -23,6 +46,10 @@ const WalletSection: React.FC = () => {
   const [stakeAmount, setStakeAmount] = useState<string>("");
   const [chapterIndex, setChapterIndex] = useState<string>("");
   const [chapterName, setChapterName] = useState<string>("");
+  const [userBalance, setUserBalance] = useState<number | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
+  const [bookTitle, setBookTitle] = useState<string>("");
+  const [bookUrl, setBookUrl] = useState<string>("");
 
   useEffect(() => {
     const initializeProgram = async () => {
@@ -67,6 +94,15 @@ const WalletSection: React.FC = () => {
     };
 
     initializeProgram();
+
+    const fetchUserBalance = async () => {
+      if (publicKey && connection) {
+        const balance = await connection.getBalance(publicKey);
+        setUserBalance(balance / LAMPORTS_PER_SOL);
+      }
+    };
+
+    fetchUserBalance();
   }, [publicKey, signTransaction, signAllTransactions, connection]);
 
   const addBook = async () => {
@@ -74,13 +110,25 @@ const WalletSection: React.FC = () => {
       console.error("Program not initialized");
       return;
     }
+    if (!bookTitle.trim() || !bookUrl.trim()) {
+      setError("Please enter both book title and URL");
+      return;
+    }
     try {
       console.log("Adding book...");
-      const tx = await programUtils.addBook(
-        "Test Book",
-        "https://example.com/test-book"
-      );
+      const tx = await programUtils.addBook(bookTitle, bookUrl);
       console.log("Transaction signature", tx);
+      // After adding a book, fetch its details
+      const newBookPubKey = await programUtils.getLastAddedBookPubKey();
+      if (newBookPubKey) {
+        setBookPublicKey(newBookPubKey.toString());
+        await updateBookAndBalance();
+        // Clear input fields after successful addition
+        setBookTitle("");
+        setBookUrl("");
+      } else {
+        setError("Failed to get the public key of the newly added book");
+      }
     } catch (error: unknown) {
       console.error("Error adding book:", error);
       setError(`Error adding book: ${(error as Error).message}`);
@@ -92,14 +140,27 @@ const WalletSection: React.FC = () => {
       console.error("Program not initialized");
       return;
     }
+    if (!bookPublicKey || bookPublicKey.trim() === "") {
+      setHint("Please enter a valid book public key");
+      return;
+    }
+    setHint(null);
     try {
-      const pubKey = new PublicKey(bookPublicKey);
+      let pubKey: PublicKey;
+      try {
+        pubKey = new PublicKey(bookPublicKey);
+      } catch (err) {
+        setError("Invalid public key format");
+        return;
+      }
       const details = await programUtils.fetchBook(pubKey);
       setBookDetails(details);
       console.log("Fetched Book Details:", details);
+      setError(null); // Clear any previous errors
     } catch (error) {
       console.error("Error fetching book:", error);
       setError(`Error fetching book: ${(error as Error).message}`);
+      setBookDetails(null); // Clear book details on error
     }
   };
 
@@ -118,7 +179,7 @@ const WalletSection: React.FC = () => {
         chapterName
       );
       console.log("Transaction signature", tx);
-      await handleFetchBook(); // Refresh book details
+      await updateBookAndBalance();
     } catch (error: unknown) {
       console.error("Error adding chapter:", error);
       setError(`Error adding chapter: ${(error as Error).message}`);
@@ -138,7 +199,7 @@ const WalletSection: React.FC = () => {
         Number(purchaseChapterIndex)
       );
       console.log("Transaction signature", tx);
-      await handleFetchBook(); // Refresh book details
+      await updateBookAndBalance();
     } catch (error: unknown) {
       console.error("Error purchasing chapter:", error);
       setError(`Error purchasing chapter: ${(error as Error).message}`);
@@ -157,7 +218,7 @@ const WalletSection: React.FC = () => {
         bookDetails.author
       );
       console.log("Transaction signature", tx);
-      await handleFetchBook(); // Refresh book details
+      await updateBookAndBalance();
     } catch (error: unknown) {
       console.error("Error purchasing full book:", error);
       setError(`Error purchasing full book: ${(error as Error).message}`);
@@ -176,130 +237,185 @@ const WalletSection: React.FC = () => {
         Number(stakeAmount) * LAMPORTS_PER_SOL
       );
       console.log("Transaction signature", tx);
-      await handleFetchBook(); // Refresh book details
+      await updateBookAndBalance();
     } catch (error: unknown) {
       console.error("Error staking on book:", error);
       setError(`Error staking on book: ${(error as Error).message}`);
     }
   };
 
+  const claimStakeEarnings = async () => {
+    if (!programUtils || !bookDetails) {
+      console.error("Program not initialized or book not fetched");
+      return;
+    }
+    try {
+      console.log("Claiming stake earnings...");
+      const tx = await programUtils.claimStakeEarnings(
+        new PublicKey(bookPublicKey)
+      );
+      console.log("Transaction signature", tx);
+      await updateBookAndBalance();
+    } catch (error: unknown) {
+      console.error("Error claiming stake earnings:", error);
+      setError(`Error claiming stake earnings: ${(error as Error).message}`);
+    }
+  };
+
+  const updateBookAndBalance = async () => {
+    await handleFetchBook();
+    if (publicKey && connection) {
+      const balance = await connection.getBalance(publicKey);
+      setUserBalance(balance / LAMPORTS_PER_SOL);
+    }
+  };
+
+  const clearError = () => setError(null);
+
   return (
-    <>
-      <WalletMultiButton />
-      {publicKey && !error && (
-        <>
-          <button
-            onClick={addBook}
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-          >
-            Add Test Book
+    <div className="flex flex-col md:flex-row gap-6 p-6 bg-gray-100 text-gray-800">
+      {error && <ErrorPopup message={error} onClose={clearError} />}
+
+      <div className="md:w-1/2 space-y-6">
+        <div className="flex justify-between items-center">
+          <WalletMultiButton />
+          {userBalance !== null && (
+            <div className="text-sm font-medium">
+              Balance: {userBalance.toFixed(4)} SOL
+            </div>
+          )}
+        </div>
+
+        {/* Add Book and Chapter */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">Add Book and Chapter</h3>
+          <input
+            type="text"
+            value={bookTitle}
+            onChange={(e) => setBookTitle(e.target.value)}
+            placeholder="Enter Book Title"
+            className="input-field w-full mb-2"
+          />
+          <input
+            type="text"
+            value={bookUrl}
+            onChange={(e) => setBookUrl(e.target.value)}
+            placeholder="Enter Book URL"
+            className="input-field w-full mb-2"
+          />
+          <button onClick={addBook} className="btn-primary w-full mb-6">
+            Add Book
           </button>
-          <div className="mt-4">
+          <div className="relative">
             <input
               type="text"
               value={bookPublicKey}
               onChange={(e) => setBookPublicKey(e.target.value)}
               placeholder="Enter Book Public Key"
-              className="border border-gray-300 rounded-md p-2 mr-2"
+              className="input-field w-full mb-2"
             />
-            <button
-              onClick={handleFetchBook}
-              className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            >
-              Fetch Book Details
-            </button>
+            {hint && (
+              <p className="text-sm text-blue-600 absolute -bottom-6 left-0">
+                {hint}
+              </p>
+            )}
           </div>
+          <button
+            onClick={handleFetchBook}
+            className="btn-secondary w-full mb-6"
+          >
+            Fetch Book Details
+          </button>
           {bookDetails && (
-            <div className="mt-4">
-              <h3>Book Actions:</h3>
-              <div className="space-y-2">
-                <div>
-                  <input
-                    type="text"
-                    value={chapterUrl}
-                    onChange={(e) => setChapterUrl(e.target.value)}
-                    placeholder="Chapter URL"
-                    className="border border-gray-300 rounded-md p-2 mr-2"
-                  />
-                  <input
-                    type="number"
-                    value={chapterIndex}
-                    onChange={(e) => setChapterIndex(e.target.value)}
-                    placeholder="Chapter Index"
-                    className="border border-gray-300 rounded-md p-2 mr-2"
-                  />
-                  <input
-                    type="number"
-                    value={chapterPrice}
-                    onChange={(e) => setChapterPrice(e.target.value)}
-                    placeholder="Chapter Price (SOL)"
-                    className="border border-gray-300 rounded-md p-2 mr-2"
-                  />
-                  <input
-                    type="text"
-                    value={chapterName}
-                    onChange={(e) => setChapterName(e.target.value)}
-                    placeholder="Chapter Name"
-                    className="border border-gray-300 rounded-md p-2 mr-2"
-                  />
-                  <button
-                    onClick={addChapter}
-                    className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-                  >
-                    Add Chapter
-                  </button>
-                </div>
-                <div>
-                  <input
-                    type="number"
-                    value={purchaseChapterIndex}
-                    onChange={(e) => setPurchaseChapterIndex(e.target.value)}
-                    placeholder="Chapter Index"
-                    className="border border-gray-300 rounded-md p-2 mr-2"
-                  />
-                  <button
-                    onClick={purchaseChapter}
-                    className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-                  >
-                    Purchase Chapter
-                  </button>
-                </div>
-                <div>
-                  <button
-                    onClick={purchaseFullBook}
-                    className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-                  >
-                    Purchase Full Book
-                  </button>
-                </div>
-                <div>
-                  <input
-                    type="number"
-                    value={stakeAmount}
-                    onChange={(e) => setStakeAmount(e.target.value)}
-                    placeholder="Stake Amount (SOL)"
-                    className="border border-gray-300 rounded-md p-2 mr-2"
-                  />
-                  <button
-                    onClick={stakeOnBook}
-                    className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-                  >
-                    Stake on Book
-                  </button>
-                </div>
-              </div>
-            </div>
+            <>
+              <input
+                type="text"
+                value={chapterUrl}
+                onChange={(e) => setChapterUrl(e.target.value)}
+                placeholder="Chapter URL"
+                className="input-field w-full mb-2"
+              />
+              <input
+                type="number"
+                value={chapterIndex}
+                onChange={(e) => setChapterIndex(e.target.value)}
+                placeholder="Chapter Index"
+                className="input-field w-full mb-2"
+              />
+              <input
+                type="number"
+                value={chapterPrice}
+                onChange={(e) => setChapterPrice(e.target.value)}
+                placeholder="Chapter Price (SOL)"
+                className="input-field w-full mb-2"
+              />
+              <input
+                type="text"
+                value={chapterName}
+                onChange={(e) => setChapterName(e.target.value)}
+                placeholder="Chapter Name"
+                className="input-field w-full mb-2"
+              />
+              <button onClick={addChapter} className="btn-primary w-full">
+                Add Chapter
+              </button>
+            </>
           )}
-        </>
-      )}
-      {error && <p className="text-red-500">{error}</p>}
-      {bookDetails && (
-        <div className="mt-4">
-          <h3>Fetched Book Details:</h3>
-          <pre>{JSON.stringify(bookDetails, null, 2)}</pre>
         </div>
-      )}
-    </>
+
+        {/* Purchase Chapter and Book */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">Purchase Chapter and Book</h3>
+          <input
+            type="number"
+            value={purchaseChapterIndex}
+            onChange={(e) => setPurchaseChapterIndex(e.target.value)}
+            placeholder="Chapter Index"
+            className="input-field w-full mb-2"
+          />
+          <button onClick={purchaseChapter} className="btn-primary w-full mb-2">
+            Purchase Chapter
+          </button>
+          <button onClick={purchaseFullBook} className="btn-secondary w-full">
+            Purchase Full Book
+          </button>
+        </div>
+
+        {/* Stake and Claim Stake */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">Stake and Claim Stake</h3>
+          <input
+            type="number"
+            value={stakeAmount}
+            onChange={(e) => setStakeAmount(e.target.value)}
+            placeholder="Stake Amount (SOL)"
+            className="input-field w-full mb-2"
+          />
+          <button onClick={stakeOnBook} className="btn-primary w-full mb-2">
+            Stake on Book
+          </button>
+          <button onClick={claimStakeEarnings} className="btn-secondary w-full">
+            Claim Stake Earnings
+          </button>
+        </div>
+      </div>
+
+      {/* Book Details */}
+      <div className="md:w-1/2">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">Book Details</h3>
+          {bookDetails ? (
+            <pre className="whitespace-pre-wrap overflow-x-auto text-black">
+              {JSON.stringify(bookDetails, null, 2)}
+            </pre>
+          ) : (
+            <p className="text-black">
+              No book details available. Please fetch a book.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 

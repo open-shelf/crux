@@ -11,7 +11,7 @@ pub enum ProgramErrorCode {
     #[msg("InsufficientFunds")]
     InsufficientFunds,
     #[msg("Stake not found for this staker")]
-    StakeNotFound,
+    StakerNotFound,
     #[msg("No rewards to claim")]
-    NoRewardsToClaim,
+    NoEarningsToClaim,
 }

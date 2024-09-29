@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/openshelf.json`.
  */
 export type Openshelf = {
-  "address": "AAekmk2UZgmN1Av5EC5uHhuqENnXzXeRvjVNs514u653",
+  "address": "JmuTfDL4F9Fo8DfsTFh3gr7VguiX7euz9vwnddoQrUh",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -102,16 +102,16 @@ export type Openshelf = {
       ]
     },
     {
-      "name": "claimRewards",
+      "name": "claimStakerEarnings",
       "discriminator": [
-        4,
-        144,
-        132,
-        71,
-        116,
-        23,
-        151,
-        80
+        117,
+        245,
+        169,
+        16,
+        136,
+        196,
+        36,
+        84
       ],
       "accounts": [
         {
@@ -282,12 +282,12 @@ export type Openshelf = {
     },
     {
       "code": 6004,
-      "name": "stakeNotFound",
+      "name": "stakerNotFound",
       "msg": "Stake not found for this staker"
     },
     {
       "code": 6005,
-      "name": "noRewardsToClaim",
+      "name": "noEarningsToClaim",
       "msg": "No rewards to claim"
     }
   ],

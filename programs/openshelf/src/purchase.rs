@@ -42,24 +42,24 @@ pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Res
     );
     anchor_lang::system_program::transfer(cpi_context, platform_share)?;
 
-    // Distribute stakers' share
+    // Handle stakers' share
     if book.total_stake > 0 {
         let total_stake = book.total_stake;
         for stake in &mut book.stakes {
             let staker_share =
                 (stake.amount as u128 * stakers_share as u128 / total_stake as u128) as u64;
             stake.earnings += staker_share;
-
-            // Transfer staker's share
-            // let cpi_context = CpiContext::new(
-            //     ctx.accounts.system_program.to_account_info(),
-            //     anchor_lang::system_program::Transfer {
-            //         from: ctx.accounts.buyer.to_account_info(),
-            //         to: stake.staker.to_account_info(),
-            //     },
-            // );
-            // anchor_lang::system_program::transfer(cpi_context, staker_share)?;
         }
+
+        // Transfer stakers' share to the book account
+        let cpi_context = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            anchor_lang::system_program::Transfer {
+                from: ctx.accounts.buyer.to_account_info(),
+                to: book.to_account_info(),
+            },
+        );
+        anchor_lang::system_program::transfer(cpi_context, stakers_share)?;
     }
 
     book.chapters[chapter_index as usize]
@@ -112,36 +112,26 @@ pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
     );
     anchor_lang::system_program::transfer(cpi_context, platform_share)?;
 
-    // Transfer stakers' share to book account
-    let cpi_context = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
-        anchor_lang::system_program::Transfer {
-            from: ctx.accounts.buyer.to_account_info(),
-            to: ctx.accounts.book.to_account_info(),
-        },
-    );
-    anchor_lang::system_program::transfer(cpi_context, stakers_share)?;
-
     let book = &mut ctx.accounts.book;
 
-    // Distribute stakers' share
+    // Handle stakers' share
     if book.total_stake > 0 {
         let total_stake = book.total_stake;
         for stake in &mut book.stakes {
             let staker_share =
                 (stake.amount as u128 * stakers_share as u128 / total_stake as u128) as u64;
             stake.earnings += staker_share;
-
-            // // Transfer staker's share
-            // let cpi_context = CpiContext::new(
-            //     ctx.accounts.system_program.to_account_info(),
-            //     anchor_lang::system_program::Transfer {
-            //         from: ctx.accounts.buyer.to_account_info(),
-            //         to: stake.staker.to_account_info(),
-            //     },
-            // );
-            // anchor_lang::system_program::transfer(cpi_context, staker_share)?;
         }
+
+        // Transfer stakers' share to the book account
+        let cpi_context = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            anchor_lang::system_program::Transfer {
+                from: ctx.accounts.buyer.to_account_info(),
+                to: book.to_account_info(),
+            },
+        );
+        anchor_lang::system_program::transfer(cpi_context, stakers_share)?;
     }
 
     book.readers.push(buyer_key);

@@ -1,5 +1,5 @@
 {
-  "address": "AAekmk2UZgmN1Av5EC5uHhuqENnXzXeRvjVNs514u653",
+  "address": "JmuTfDL4F9Fo8DfsTFh3gr7VguiX7euz9vwnddoQrUh",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -96,16 +96,16 @@
       ]
     },
     {
-      "name": "claim_rewards",
+      "name": "claim_staker_earnings",
       "discriminator": [
-        4,
-        144,
-        132,
-        71,
-        116,
-        23,
-        151,
-        80
+        117,
+        245,
+        169,
+        16,
+        136,
+        196,
+        36,
+        84
       ],
       "accounts": [
         {
@@ -276,12 +276,12 @@
     },
     {
       "code": 6004,
-      "name": "StakeNotFound",
+      "name": "StakerNotFound",
       "msg": "Stake not found for this staker"
     },
     {
       "code": 6005,
-      "name": "NoRewardsToClaim",
+      "name": "NoEarningsToClaim",
       "msg": "No rewards to claim"
     }
   ],

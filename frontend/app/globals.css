@@ -25,3 +25,34 @@ body {
     text-wrap: balance;
   }
 }
+
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out;
+  }
+
+  .input-field {
+    @apply border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-150 ease-in-out;
+  }
+}
+
+/* Add these styles at the end of your globals.css file */
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.fixed {
+  animation: slideIn 0.3s ease-out;
+}
