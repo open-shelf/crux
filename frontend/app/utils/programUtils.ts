@@ -41,22 +41,30 @@ export class ProgramUtils {
 
   async fetchBook(pubKey: PublicKey): Promise<any> {
     const bookAccount = await this.program.account.book.fetch(pubKey);
+    const user = this.provider.wallet.publicKey;
+
     return {
       author: bookAccount.author.toString(),
       title: bookAccount.title,
       metaUrl: bookAccount.metaUrl,
       fullBookPrice: bookAccount.fullBookPrice.toNumber(),
       totalStake: bookAccount.totalStake.toNumber(),
+      bookPurchased: bookAccount.readers.some(
+        (reader) => reader.toString() === user.toString()
+      ),
       chapters: bookAccount.chapters.map((chapter: any, index: number) => ({
         index: chapter.index,
-        isPurchased: false,
-        name: `Chapter ${index + 1}`,
+        isPurchased: chapter.readers.some(
+          (reader) => reader.toString() === user.toString()
+        ),
+        name: chapter.name,
         url: chapter.url,
         price: chapter.price.toNumber(),
       })),
       stakes: bookAccount.stakes.map((stake: any) => ({
         staker: stake.staker.toString(),
         amount: stake.amount.toNumber(),
+        earnings: stake.earnings.toNumber(),
       })),
     };
   }
