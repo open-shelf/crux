@@ -6,3 +6,4 @@ node_modules
 test-ledger
 .yarn
 docs/fusion_metaplex.pdf
+docs/testBooks.json
