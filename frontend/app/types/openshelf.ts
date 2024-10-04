@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/openshelf.json`.
  */
 export type Openshelf = {
-  "address": "JmuTfDL4F9Fo8DfsTFh3gr7VguiX7euz9vwnddoQrUh",
+  "address": "7nMw3278JMFJrCwtiWW4kLe7qMjY9zAftk6t8gNCVNEH",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -131,6 +131,142 @@ export type Openshelf = {
       "args": []
     },
     {
+      "name": "createBookAsset",
+      "discriminator": [
+        63,
+        105,
+        59,
+        78,
+        121,
+        55,
+        218,
+        112
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "collection",
+          "writable": true
+        },
+        {
+          "name": "asset",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "bookPubKey",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "createChapterAsset",
+      "discriminator": [
+        234,
+        23,
+        202,
+        174,
+        61,
+        95,
+        91,
+        195
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "collection",
+          "writable": true
+        },
+        {
+          "name": "asset",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "bookPubKey",
+          "type": "string"
+        },
+        {
+          "name": "chapterIndex",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "createUserCollection",
+      "discriminator": [
+        26,
+        51,
+        177,
+        244,
+        95,
+        195,
+        81,
+        131
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "collection",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "purchaseChapter",
       "discriminator": [
         123,
@@ -246,6 +382,19 @@ export type Openshelf = {
   ],
   "accounts": [
     {
+      "name": "baseCollectionV1",
+      "discriminator": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
       "name": "book",
       "discriminator": [
         121,
@@ -292,6 +441,42 @@ export type Openshelf = {
     }
   ],
   "types": [
+    {
+      "name": "baseCollectionV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "type": {
+              "defined": {
+                "name": "key"
+              }
+            }
+          },
+          {
+            "name": "updateAuthority",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "uri",
+            "type": "string"
+          },
+          {
+            "name": "numMinted",
+            "type": "u32"
+          },
+          {
+            "name": "currentSize",
+            "type": "u32"
+          }
+        ]
+      }
+    },
     {
       "name": "book",
       "type": {
@@ -372,6 +557,32 @@ export type Openshelf = {
             "type": {
               "vec": "pubkey"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "key",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "uninitialized"
+          },
+          {
+            "name": "assetV1"
+          },
+          {
+            "name": "hashedAssetV1"
+          },
+          {
+            "name": "pluginHeaderV1"
+          },
+          {
+            "name": "pluginRegistryV1"
+          },
+          {
+            "name": "collectionV1"
           }
         ]
       }

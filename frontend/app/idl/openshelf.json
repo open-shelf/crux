@@ -1,5 +1,5 @@
 {
-  "address": "JmuTfDL4F9Fo8DfsTFh3gr7VguiX7euz9vwnddoQrUh",
+  "address": "7nMw3278JMFJrCwtiWW4kLe7qMjY9zAftk6t8gNCVNEH",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -125,6 +125,142 @@
       "args": []
     },
     {
+      "name": "create_book_asset",
+      "discriminator": [
+        63,
+        105,
+        59,
+        78,
+        121,
+        55,
+        218,
+        112
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "collection",
+          "writable": true
+        },
+        {
+          "name": "asset",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mpl_core_program",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "book_pub_key",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "create_chapter_asset",
+      "discriminator": [
+        234,
+        23,
+        202,
+        174,
+        61,
+        95,
+        91,
+        195
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "collection",
+          "writable": true
+        },
+        {
+          "name": "asset",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mpl_core_program",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "book_pub_key",
+          "type": "string"
+        },
+        {
+          "name": "chapter_index",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "create_user_collection",
+      "discriminator": [
+        26,
+        51,
+        177,
+        244,
+        95,
+        195,
+        81,
+        131
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "collection",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mpl_core_program",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "purchase_chapter",
       "discriminator": [
         123,
@@ -240,6 +376,19 @@
   ],
   "accounts": [
     {
+      "name": "BaseCollectionV1",
+      "discriminator": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
       "name": "Book",
       "discriminator": [
         121,
@@ -286,6 +435,42 @@
     }
   ],
   "types": [
+    {
+      "name": "BaseCollectionV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "type": {
+              "defined": {
+                "name": "Key"
+              }
+            }
+          },
+          {
+            "name": "update_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "uri",
+            "type": "string"
+          },
+          {
+            "name": "num_minted",
+            "type": "u32"
+          },
+          {
+            "name": "current_size",
+            "type": "u32"
+          }
+        ]
+      }
+    },
     {
       "name": "Book",
       "type": {
@@ -366,6 +551,32 @@
             "type": {
               "vec": "pubkey"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Key",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Uninitialized"
+          },
+          {
+            "name": "AssetV1"
+          },
+          {
+            "name": "HashedAssetV1"
+          },
+          {
+            "name": "PluginHeaderV1"
+          },
+          {
+            "name": "PluginRegistryV1"
+          },
+          {
+            "name": "CollectionV1"
           }
         ]
       }

@@ -123,9 +123,6 @@ const WalletSection: React.FC = () => {
       if (newBookPubKey) {
         setBookPublicKey(newBookPubKey.toString());
         await updateBookAndBalance();
-        // Clear input fields after successful addition
-        setBookTitle("");
-        setBookUrl("");
       } else {
         setError("Failed to get the public key of the newly added book");
       }

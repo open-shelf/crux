@@ -15,6 +15,7 @@ describe('OpenShelf Tests', () => {
     require('./filter_books'); // Include the new test file
     require('./fetch_info');
     require('./claim_earnings');
+    require('./nft');
 });
 
 after(() => {
