@@ -50,6 +50,8 @@ const WalletSection: React.FC = () => {
   const [hint, setHint] = useState<string | null>(null);
   const [bookTitle, setBookTitle] = useState<string>("");
   const [bookUrl, setBookUrl] = useState<string>("");
+  const [jsonInput, setJsonInput] = useState<string>("");
+  const [jsonError, setJsonError] = useState<string | null>(null);
 
   useEffect(() => {
     const initializeProgram = async () => {
@@ -269,6 +271,53 @@ const WalletSection: React.FC = () => {
 
   const clearError = () => setError(null);
 
+  const handleJsonSubmit = async () => {
+    if (!programUtils) {
+      console.error("Program not initialized");
+      return;
+    }
+
+    try {
+      const bookData = JSON.parse(jsonInput);
+
+      // Add the book
+      const addBookTx = await programUtils.addBook(
+        bookData.title,
+        bookData.url
+      );
+      console.log("Add book transaction signature", addBookTx);
+
+      // Get the newly added book's public key
+      const newBookPubKey = await programUtils.getLastAddedBookPubKey();
+      if (!newBookPubKey) {
+        throw new Error("Failed to get the public key of the newly added book");
+      }
+
+      // Add chapters
+      for (const chapter of bookData.chapters) {
+        const addChapterTx = await programUtils.addChapter(
+          newBookPubKey,
+          chapter.url,
+          chapter.index,
+          chapter.price * LAMPORTS_PER_SOL,
+          chapter.name
+        );
+        console.log(
+          `Add chapter ${chapter.index} transaction signature`,
+          addChapterTx
+        );
+      }
+
+      setBookPublicKey(newBookPubKey.toString());
+      await updateBookAndBalance();
+      setJsonError(null);
+      setError(null);
+    } catch (error: unknown) {
+      console.error("Error processing JSON input:", error);
+      setJsonError(`Error processing JSON input: ${(error as Error).message}`);
+    }
+  };
+
   return (
     <div className="flex flex-col md:flex-row gap-6 p-6 bg-gray-100 text-gray-800">
       {error && <ErrorPopup message={error} onClose={clearError} />}
@@ -394,6 +443,24 @@ const WalletSection: React.FC = () => {
           <button onClick={claimStakeEarnings} className="btn-secondary w-full">
             Claim Stake Earnings
           </button>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">
+            Add Book and Chapters from JSON
+          </h3>
+          <textarea
+            value={jsonInput}
+            onChange={(e) => setJsonInput(e.target.value)}
+            placeholder="Enter book and chapters JSON"
+            className="input-field w-full h-48 mb-2"
+          />
+          <button onClick={handleJsonSubmit} className="btn-primary w-full">
+            Submit JSON
+          </button>
+          {jsonError && (
+            <p className="text-red-500 text-sm mt-2">{jsonError}</p>
+          )}
         </div>
       </div>
 

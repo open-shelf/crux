@@ -88,7 +88,7 @@ export class ProgramUtils {
         book: bookPubKey,
         buyer: this.provider.wallet.publicKey,
         author: authorPubKey,
-        platform: new PublicKey("DV5h5xRmWap6VwRVbXvvotgg41y1BZsHE3tEjMZhTL6L"),
+        platform: new PublicKey("6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"),
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
@@ -102,7 +102,7 @@ export class ProgramUtils {
         book: bookPubKey,
         buyer: this.provider.wallet.publicKey,
         author: authorPubKey,
-        platform: new PublicKey("DV5h5xRmWap6VwRVbXvvotgg41y1BZsHE3tEjMZhTL6L"),
+        platform: new PublicKey("6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"),
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();

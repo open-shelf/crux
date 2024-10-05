@@ -14,7 +14,7 @@ openshelf = "7nMw3278JMFJrCwtiWW4kLe7qMjY9zAftk6t8gNCVNEH"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
