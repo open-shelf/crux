@@ -7,6 +7,7 @@ import {  fetchCollection } from '@metaplex-foundation/mpl-core';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
 import { expect } from "chai";
 import { createSignerFromKeypair, signerIdentity, publicKey } from '@metaplex-foundation/umi';
+import { setup } from "./setup";
 
 describe("Openshelf NFT Tests", () => {
   // Configure the client to use the local cluster.
@@ -19,15 +20,17 @@ describe("Openshelf NFT Tests", () => {
   const chapterAsset = Keypair.generate();
   const book = Keypair.generate();
 
-  const bookTitle = "Test Book";
-  const bookMetaUrl = "http://example.com/book-meta";
+  const bookTitle = "The Great Gatsby";
+  const description = "A good book!";
+  const genre = "Fiction";
+  const image_url = "https://example.com/book-cover.jpg";
   const chapterUrl = "http://example.com/chapter1";
   const chapterIndex = 0;
   const chapterPrice = new anchor.BN(1000000); // 1 SOL in lamports
   const chapterName = "Chapter 1";
 
   it("Add Book", async () => {
-    const tx = await program.methods.addBook(bookTitle, bookMetaUrl)
+    const tx = await program.methods.addBook(bookTitle, description, genre, image_url)
       .accounts({
         book: book.publicKey,
         author: wallet.publicKey,
@@ -70,11 +73,12 @@ describe("Openshelf NFT Tests", () => {
   });
 
   it("Create Book Asset", async () => {
-    const tx = await program.methods.createBookAsset(book.publicKey.toBase58())
+    const tx = await program.methods.createBookAsset()
       .accounts({
         signer: wallet.publicKey,
         payer: wallet.publicKey,
         asset: bookAsset.publicKey,
+        book: book.publicKey,
         collection: collection.publicKey,
         mplCoreProgram: new PublicKey(MPL_CORE_PROGRAM_ID),
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -87,12 +91,13 @@ describe("Openshelf NFT Tests", () => {
   });
 
   it("Create Chapter Asset", async () => {
-    const tx = await program.methods.createChapterAsset(book.publicKey.toBase58(), new anchor.BN(chapterIndex))
+    const tx = await program.methods.createChapterAsset(new anchor.BN(chapterIndex))
       .accounts({
         signer: wallet.publicKey,
         payer: wallet.publicKey,
         asset: chapterAsset.publicKey,
         collection: collection.publicKey,
+        book: book.publicKey,
         mplCoreProgram: new PublicKey(MPL_CORE_PROGRAM_ID),
         systemProgram: anchor.web3.SystemProgram.programId,
       })

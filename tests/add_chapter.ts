@@ -4,14 +4,16 @@ import { setup } from "./setup";
 
 describe("Add Chapter", () => {
   it("Can add chapters", async () => {
-    const { program, bookKeypair, author, bookTitle, metaUrl, chapterPrices } = await setup();
+    const { program, bookKeypair, author, bookTitle, description,  genre, image_url, chapterPrices } = await setup();
 
     try {
       // First, add a book
       await program.methods
         .addBook(
           bookTitle,
-          metaUrl // Add meta_url parameter
+          description,  
+          genre, 
+          image_url
         )
         .accounts({
           book: bookKeypair.publicKey,

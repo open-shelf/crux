@@ -6,6 +6,7 @@ import { PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import idl from "./idl/openshelf.json";
 import { ProgramUtils } from "./utils/programUtils";
+import Image from "next/image";
 
 // Assuming you have a type definition for your program
 import { Openshelf } from "./types/openshelf";
@@ -52,6 +53,19 @@ const WalletSection: React.FC = () => {
   const [bookUrl, setBookUrl] = useState<string>("");
   const [jsonInput, setJsonInput] = useState<string>("");
   const [jsonError, setJsonError] = useState<string | null>(null);
+  const [collectionName, setCollectionName] = useState<string>("");
+  const [collectionSymbol, setCollectionSymbol] = useState<string>("");
+  const [bookNftName, setBookNftName] = useState<string>("");
+  const [bookNftSymbol, setBookNftSymbol] = useState<string>("");
+  const [chapterNftName, setChapterNftName] = useState<string>("");
+  const [chapterNftSymbol, setChapterNftSymbol] = useState<string>("");
+  const [chapterNftIndex, setChapterNftIndex] = useState<string>("");
+  const [collectionPublicKey, setCollectionPublicKey] = useState<string>("");
+  const [collectionMints, setCollectionMints] = useState<string[]>([]);
+  const [bookDescription, setBookDescription] = useState<string>("");
+  const [bookGenre, setBookGenre] = useState<string>("");
+  const [collectionAssets, setCollectionAssets] = useState<any[]>([]);
+  const [selectedAsset, setSelectedAsset] = useState<number | null>(null);
 
   useEffect(() => {
     const initializeProgram = async () => {
@@ -112,13 +126,23 @@ const WalletSection: React.FC = () => {
       console.error("Program not initialized");
       return;
     }
-    if (!bookTitle.trim() || !bookUrl.trim()) {
-      setError("Please enter both book title and URL");
+    if (
+      !bookTitle.trim() ||
+      !bookDescription.trim() ||
+      !bookGenre.trim() ||
+      !bookUrl.trim()
+    ) {
+      setError("Please enter all book details");
       return;
     }
     try {
       console.log("Adding book...");
-      const tx = await programUtils.addBook(bookTitle, bookUrl);
+      const tx = await programUtils.addBook(
+        bookTitle,
+        bookDescription,
+        bookGenre,
+        bookUrl
+      );
       console.log("Transaction signature", tx);
       // After adding a book, fetch its details
       const newBookPubKey = await programUtils.getLastAddedBookPubKey();
@@ -283,7 +307,9 @@ const WalletSection: React.FC = () => {
       // Add the book
       const addBookTx = await programUtils.addBook(
         bookData.title,
-        bookData.url
+        bookData.description,
+        bookData.genre,
+        bookData.image_url
       );
       console.log("Add book transaction signature", addBookTx);
 
@@ -318,6 +344,117 @@ const WalletSection: React.FC = () => {
     }
   };
 
+  const createCollection = async () => {
+    if (!programUtils) {
+      console.error("Program not initialized");
+      return;
+    }
+    try {
+      console.log("Creating collection...");
+      const tx = await programUtils.createUserCollection();
+      console.log("Transaction signature", tx);
+      setError(null);
+    } catch (error: unknown) {
+      console.error("Error creating collection:", error);
+      setError(`Error creating collection: ${(error as Error).message}`);
+    }
+  };
+
+  const mintBookNft = async () => {
+    if (!programUtils || !bookDetails) {
+      console.error("Program not initialized or book not fetched");
+      return;
+    }
+    if (!collectionPublicKey) {
+      setError("Please enter a collection public key");
+      return;
+    }
+    try {
+      console.log("Minting Book NFT...");
+      const tx = await programUtils.createBookAsset(
+        new PublicKey(bookPublicKey),
+        new PublicKey(collectionPublicKey)
+      );
+      console.log("Transaction signature", tx);
+      await updateBookAndBalance();
+    } catch (error: unknown) {
+      console.error("Error minting Book NFT:", error);
+      setError(`Error minting Book NFT: ${(error as Error).message}`);
+    }
+  };
+
+  const mintChapterNft = async () => {
+    if (!programUtils || !bookDetails) {
+      console.error("Program not initialized or book not fetched");
+      return;
+    }
+    if (!collectionPublicKey) {
+      setError("Please enter a collection public key");
+      return;
+    }
+    try {
+      console.log("Minting Chapter NFT...");
+      const tx = await programUtils.createChapterAsset(
+        new PublicKey(bookPublicKey),
+        Number(chapterNftIndex),
+        new PublicKey(collectionPublicKey)
+      );
+      console.log("Transaction signature", tx);
+      await updateBookAndBalance();
+    } catch (error: unknown) {
+      console.error("Error minting Chapter NFT:", error);
+      setError(`Error minting Chapter NFT: ${(error as Error).message}`);
+    }
+  };
+
+  const fetchCollection = async () => {
+    if (!programUtils) {
+      console.error("Program not initialized");
+      return;
+    }
+    if (!collectionPublicKey || collectionPublicKey.trim() === "") {
+      setHint("Please enter a valid collection public key");
+      return;
+    }
+    setHint(null);
+    try {
+      let pubKey: PublicKey;
+      try {
+        pubKey = new PublicKey(collectionPublicKey);
+      } catch (err) {
+        setError("Invalid public key format");
+        return;
+      }
+      const assetsV1 = await programUtils.fetchCollection(pubKey);
+      setCollectionAssets(assetsV1);
+
+      // Fetch metadata for all assets
+      const metadataPromises = assetsV1.map(async (asset) => {
+        if (asset.uri) {
+          const response = await fetch(asset.uri);
+          return await response;
+        }
+        return null;
+      });
+
+      const metadataResults = await Promise.all(metadataPromises);
+      setCollectionAssets(
+        assetsV1.map((asset, index) => ({
+          ...asset,
+          metadata: metadataResults[index],
+        }))
+      );
+
+      setSelectedAsset(0); // Select the first asset by default
+      setError(null);
+    } catch (error) {
+      console.error("Error fetching collection:", error);
+      setError(`Error fetching collection: ${(error as Error).message}`);
+      setCollectionAssets([]);
+      setSelectedAsset(null);
+    }
+  };
+
   return (
     <div className="flex flex-col md:flex-row gap-6 p-6 bg-gray-100 text-gray-800">
       {error && <ErrorPopup message={error} onClose={clearError} />}
@@ -342,11 +479,25 @@ const WalletSection: React.FC = () => {
             placeholder="Enter Book Title"
             className="input-field w-full mb-2"
           />
+          <textarea
+            value={bookDescription}
+            onChange={(e) => setBookDescription(e.target.value)}
+            placeholder="Enter Book Description"
+            className="input-field w-full mb-2"
+            rows={3}
+          />
+          <input
+            type="text"
+            value={bookGenre}
+            onChange={(e) => setBookGenre(e.target.value)}
+            placeholder="Enter Book Genre"
+            className="input-field w-full mb-2"
+          />
           <input
             type="text"
             value={bookUrl}
             onChange={(e) => setBookUrl(e.target.value)}
-            placeholder="Enter Book URL"
+            placeholder="Enter Book Image URL"
             className="input-field w-full mb-2"
           />
           <button onClick={addBook} className="btn-primary w-full mb-6">
@@ -462,6 +613,64 @@ const WalletSection: React.FC = () => {
             <p className="text-red-500 text-sm mt-2">{jsonError}</p>
           )}
         </div>
+
+        {/* Create Collection */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">
+            Create and Fetch Collection
+          </h3>
+          <button
+            onClick={createCollection}
+            className="btn-primary w-full mb-4"
+          >
+            Create Collection
+          </button>
+          <input
+            type="text"
+            value={collectionPublicKey}
+            onChange={(e) => setCollectionPublicKey(e.target.value)}
+            placeholder="Enter Collection Public Key"
+            className="input-field w-full mb-2"
+          />
+          <button onClick={fetchCollection} className="btn-secondary w-full">
+            Fetch Collection Details
+          </button>
+        </div>
+
+        {/* Collection Public Key Input */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">Collection Public Key</h3>
+          <input
+            type="text"
+            value={collectionPublicKey}
+            onChange={(e) => setCollectionPublicKey(e.target.value)}
+            placeholder="Enter Collection Public Key"
+            className="input-field w-full mb-2"
+          />
+        </div>
+
+        {/* Mint Book NFT */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">Mint Book NFT</h3>
+          <button onClick={mintBookNft} className="btn-primary w-full">
+            Mint Book NFT
+          </button>
+        </div>
+
+        {/* Mint Chapter NFT */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">Mint Chapter NFT</h3>
+          <input
+            type="number"
+            value={chapterNftIndex}
+            onChange={(e) => setChapterNftIndex(e.target.value)}
+            placeholder="Chapter Index"
+            className="input-field w-full mb-2"
+          />
+          <button onClick={mintChapterNft} className="btn-primary w-full">
+            Mint Chapter NFT
+          </button>
+        </div>
       </div>
 
       {/* Book Details */}
@@ -475,6 +684,85 @@ const WalletSection: React.FC = () => {
           ) : (
             <p className="text-black">
               No book details available. Please fetch a book.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Collection Details */}
+      <div className="md:w-1/2">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">Collection Details</h3>
+          {collectionAssets.length > 0 ? (
+            <div>
+              <p>
+                <strong>Number of assets:</strong> {collectionAssets.length}
+              </p>
+              <div className="mb-4">
+                <label htmlFor="assetSelect" className="block mb-2">
+                  Select Asset:
+                </label>
+                <select
+                  id="assetSelect"
+                  value={selectedAsset !== null ? selectedAsset : ""}
+                  onChange={(e) => setSelectedAsset(Number(e.target.value))}
+                  className="w-full p-2 border rounded"
+                >
+                  {collectionAssets.map((asset, index) => (
+                    <option key={index} value={index}>
+                      Asset {index + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedAsset !== null && (
+                <div>
+                  <p>
+                    <strong>Public Key:</strong>{" "}
+                    {collectionAssets[selectedAsset].publicKey.toString()}
+                  </p>
+                  <p>
+                    <strong>URI:</strong> {collectionAssets[selectedAsset].uri}
+                  </p>
+                  {collectionAssets[selectedAsset].metadata && (
+                    <div>
+                      <h4 className="text-lg font-semibold mt-4 mb-2">
+                        Metadata
+                      </h4>
+                      <p>
+                        <strong>Name:</strong>{" "}
+                        {collectionAssets[selectedAsset].metadata.name}
+                      </p>
+                      <p>
+                        <strong>Symbol:</strong>{" "}
+                        {collectionAssets[selectedAsset].metadata.symbol}
+                      </p>
+                      <p>
+                        <strong>Description:</strong>{" "}
+                        {collectionAssets[selectedAsset].metadata.description}
+                      </p>
+                      {collectionAssets[selectedAsset].metadata.image && (
+                        <div className="mt-4">
+                          <Image
+                            src={collectionAssets[selectedAsset].metadata.image}
+                            alt={
+                              collectionAssets[selectedAsset].metadata.name ||
+                              "NFT Image"
+                            }
+                            width={300}
+                            height={300}
+                            className="rounded-lg"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-black">
+              No collection details available. Please fetch a collection.
             </p>
           )}
         </div>

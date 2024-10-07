@@ -4,12 +4,17 @@ import { setup } from "./setup";
 
 describe("Purchase Full Book", () => {
   it("Can purchase a full book and distribute earnings", async () => {
-    const { program, bookKeypair, author, reader2, staker1, platform, bookTitle, metaUrl, chapterPrices } = await setup();
+    const { program, bookKeypair, author, reader2, staker1, platform, bookTitle, description,  genre, image_url, chapterPrices } = await setup();
 
     try {
       // Add a book
       await program.methods
-        .addBook(bookTitle, metaUrl)
+        .addBook(
+          bookTitle,
+          description,  
+          genre, 
+          image_url
+        )
         .accounts({
           book: bookKeypair.publicKey,
           author: author.publicKey,

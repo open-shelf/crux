@@ -4,12 +4,17 @@ import { setup } from "./setup";
 
 describe("Verify Readers and Stakes", () => {
   it("Can verify readers and stakes for a book", async () => {
-    const { program, bookKeypair, author, reader1, reader2, staker1, staker2, platform, bookTitle, metaUrl, chapterPrices } = await setup();
+    const { program, bookKeypair, author, reader1, reader2, staker1, staker2, platform, bookTitle, description,  genre, image_url, chapterPrices } = await setup();
 
     try {
       // Add a book
       await program.methods
-        .addBook(bookTitle, metaUrl)
+        .addBook(
+          bookTitle,
+          description,  
+          genre, 
+          image_url
+        )
         .accounts({
           book: bookKeypair.publicKey,
           author: author.publicKey,

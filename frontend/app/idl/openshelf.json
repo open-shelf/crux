@@ -1,5 +1,5 @@
 {
-  "address": "7nMw3278JMFJrCwtiWW4kLe7qMjY9zAftk6t8gNCVNEH",
+  "address": "AGVyPYiXUtSnKqqgLWcs5LAfh94ct1CtuaiCSFuGMxxW",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -41,7 +41,15 @@
           "type": "string"
         },
         {
-          "name": "meta_url",
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "genre",
+          "type": "string"
+        },
+        {
+          "name": "image",
           "type": "string"
         }
       ]
@@ -151,6 +159,9 @@
           "writable": true
         },
         {
+          "name": "book"
+        },
+        {
           "name": "asset",
           "writable": true,
           "signer": true
@@ -164,12 +175,7 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "book_pub_key",
-          "type": "string"
-        }
-      ]
+      "args": []
     },
     {
       "name": "create_chapter_asset",
@@ -198,6 +204,9 @@
           "writable": true
         },
         {
+          "name": "book"
+        },
+        {
           "name": "asset",
           "writable": true,
           "signer": true
@@ -212,10 +221,6 @@
         }
       ],
       "args": [
-        {
-          "name": "book_pub_key",
-          "type": "string"
-        },
         {
           "name": "chapter_index",
           "type": "u64"
@@ -485,8 +490,12 @@
             "type": "string"
           },
           {
-            "name": "meta_url",
-            "type": "string"
+            "name": "metadata",
+            "type": {
+              "defined": {
+                "name": "MetaData"
+              }
+            }
           },
           {
             "name": "full_book_price",
@@ -577,6 +586,30 @@
           },
           {
             "name": "CollectionV1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MetaData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "publish_date",
+            "type": "i64"
+          },
+          {
+            "name": "genre",
+            "type": "string"
+          },
+          {
+            "name": "image_url",
+            "type": "string"
           }
         ]
       }

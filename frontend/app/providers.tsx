@@ -11,10 +11,10 @@ import { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {
   // // Local network endpoint
-  // const endpoint = useMemo(() => "http://127.0.0.1:8899", []);
+  const endpoint = useMemo(() => "http://127.0.0.1:8899", []);
 
-  // Local network endpoint
-  const endpoint = useMemo(() => "https://api.devnet.solana.com", []);
+  // // Local network endpoint
+  // const endpoint = useMemo(() => "https://api.devnet.solana.com", []);
 
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 

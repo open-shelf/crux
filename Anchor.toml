@@ -5,16 +5,16 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-openshelf = "7nMw3278JMFJrCwtiWW4kLe7qMjY9zAftk6t8gNCVNEH"
+openshelf = "AGVyPYiXUtSnKqqgLWcs5LAfh94ct1CtuaiCSFuGMxxW"
 
 [programs.localnet]
-openshelf = "7nMw3278JMFJrCwtiWW4kLe7qMjY9zAftk6t8gNCVNEH"
+openshelf = "AGVyPYiXUtSnKqqgLWcs5LAfh94ct1CtuaiCSFuGMxxW"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

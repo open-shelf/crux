@@ -17,8 +17,10 @@ export const setup = async () => {
   const platform = anchor.web3.Keypair.generate(); 
 
   const bookTitle = "The Great Gatsby";
-  const metaUrl = "https://example.com/meta"; // Add meta_url parameter
-  
+  const description = "A good book!";
+  const publish_date = Date.now();
+  const genre = "Fiction";
+  const image_url = "https://example.com/book-cover.jpg";
   // Adjust chapter prices to total 1 SOL
   const chapterPrices = [
     0.3 * anchor.web3.LAMPORTS_PER_SOL,
@@ -54,7 +56,10 @@ export const setup = async () => {
     staker2,
     platform,
     bookTitle,
-    metaUrl, // Return meta_url
+    description,
+    publish_date,
+    genre,
+    image_url,
     chapterPrices,
   };
 };

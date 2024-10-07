@@ -4,12 +4,17 @@ import { setup } from "./setup";
 
 describe("Fetch_info", () => {
   it("Can fetch book and chapter details", async () => {
-    const { program, bookKeypair, author, bookTitle, metaUrl, chapterPrices } = await setup();
+    const { program, bookKeypair, author, bookTitle, description,  genre, image_url, chapterPrices } = await setup();
 
     try {
       // Add a book
       await program.methods
-        .addBook(bookTitle, metaUrl)
+        .addBook(
+          bookTitle,
+          description,  
+          genre, 
+          image_url
+        )
         .accounts({
           book: bookKeypair.publicKey,
           author: author.publicKey,
@@ -47,7 +52,9 @@ describe("Fetch_info", () => {
       const formattedBookDetails = {
         author: bookAccount.author.toString(),
         title: bookAccount.title,
-        meta_url: bookAccount.metaUrl,
+        description: bookAccount.metadata.description,
+        genre: bookAccount.metadata.genre,
+        imageUrl: bookAccount.metadata.imageUrl,
         fullBookPrice: bookAccount.fullBookPrice.toNumber(),
         totalStake: bookAccount.totalStake.toNumber(),
         chapters: bookAccount.chapters.map(chapter => ({
@@ -65,7 +72,7 @@ describe("Fetch_info", () => {
       // Assert book details
       assert.equal(formattedBookDetails.author, author.publicKey.toString());
       assert.equal(formattedBookDetails.title, bookTitle);
-      assert.equal(formattedBookDetails.meta_url, metaUrl);
+      assert.equal(formattedBookDetails.imageUrl, image_url);
       assert.equal(formattedBookDetails.chapters.length, chapterUrls.length);
 
       // Format chapter details according to structure.json

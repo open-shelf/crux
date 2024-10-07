@@ -14,14 +14,20 @@ use nft::*;
 use purchase::*;
 use stake::*;
 
-declare_id!("7nMw3278JMFJrCwtiWW4kLe7qMjY9zAftk6t8gNCVNEH");
+declare_id!("AGVyPYiXUtSnKqqgLWcs5LAfh94ct1CtuaiCSFuGMxxW");
 
 #[program]
 pub mod openshelf {
     use super::*;
 
-    pub fn add_book(ctx: Context<AddBook>, title: String, meta_url: String) -> Result<()> {
-        book::add_book(ctx, title, meta_url)
+    pub fn add_book(
+        ctx: Context<AddBook>,
+        title: String,
+        description: String,
+        genre: String,
+        image: String,
+    ) -> Result<()> {
+        book::add_book(ctx, title, description, genre, image)
     }
 
     pub fn add_chapter(
@@ -54,15 +60,14 @@ pub mod openshelf {
         nft::create_user_collection(ctx)
     }
 
-    pub fn create_book_asset(ctx: Context<CreateBookAsset>, book_pub_key: String) -> Result<()> {
-        nft::create_book_asset(ctx, book_pub_key)
+    pub fn create_book_asset(ctx: Context<CreateBookAsset>) -> Result<()> {
+        nft::create_book_asset(ctx)
     }
 
     pub fn create_chapter_asset(
         ctx: Context<CreateChapterAsset>,
-        book_pub_key: String,
         chapter_index: u64,
     ) -> Result<()> {
-        nft::create_chapter_asset(ctx, book_pub_key, chapter_index)
+        nft::create_chapter_asset(ctx, chapter_index)
     }
 }

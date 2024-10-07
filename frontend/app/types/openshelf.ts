@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/openshelf.json`.
  */
 export type Openshelf = {
-  "address": "7nMw3278JMFJrCwtiWW4kLe7qMjY9zAftk6t8gNCVNEH",
+  "address": "AGVyPYiXUtSnKqqgLWcs5LAfh94ct1CtuaiCSFuGMxxW",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -47,7 +47,15 @@ export type Openshelf = {
           "type": "string"
         },
         {
-          "name": "metaUrl",
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "genre",
+          "type": "string"
+        },
+        {
+          "name": "image",
           "type": "string"
         }
       ]
@@ -157,6 +165,9 @@ export type Openshelf = {
           "writable": true
         },
         {
+          "name": "book"
+        },
+        {
           "name": "asset",
           "writable": true,
           "signer": true
@@ -170,12 +181,7 @@ export type Openshelf = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": [
-        {
-          "name": "bookPubKey",
-          "type": "string"
-        }
-      ]
+      "args": []
     },
     {
       "name": "createChapterAsset",
@@ -204,6 +210,9 @@ export type Openshelf = {
           "writable": true
         },
         {
+          "name": "book"
+        },
+        {
           "name": "asset",
           "writable": true,
           "signer": true
@@ -218,10 +227,6 @@ export type Openshelf = {
         }
       ],
       "args": [
-        {
-          "name": "bookPubKey",
-          "type": "string"
-        },
         {
           "name": "chapterIndex",
           "type": "u64"
@@ -491,8 +496,12 @@ export type Openshelf = {
             "type": "string"
           },
           {
-            "name": "metaUrl",
-            "type": "string"
+            "name": "metadata",
+            "type": {
+              "defined": {
+                "name": "metaData"
+              }
+            }
           },
           {
             "name": "fullBookPrice",
@@ -583,6 +592,30 @@ export type Openshelf = {
           },
           {
             "name": "collectionV1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "metaData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "publishDate",
+            "type": "i64"
+          },
+          {
+            "name": "genre",
+            "type": "string"
+          },
+          {
+            "name": "imageUrl",
+            "type": "string"
           }
         ]
       }

@@ -4,12 +4,17 @@ import { setup } from "./setup";
 
 describe("Filter Books", () => {
   it("Should filter books by author and number of stakers", async () => {
-    const { program, bookKeypair, author, staker1, staker2, bookTitle, metaUrl, chapterPrices } = await setup();
+    const { program, bookKeypair, author, staker1, staker2, bookTitle, description,  genre, image_url, chapterPrices } = await setup();
 
     try {
       // Add a book
       await program.methods
-        .addBook(bookTitle, metaUrl)
+        .addBook(
+          bookTitle,
+          description,  
+          genre, 
+          image_url
+        )
         .accounts({
           book: bookKeypair.publicKey,
           author: author.publicKey,
