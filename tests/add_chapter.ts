@@ -4,14 +4,16 @@ import { setup } from "./setup";
 
 describe("Add Chapter", () => {
   it("Can add chapters", async () => {
-    const { program, bookKeypair, author, bookTitle, metaUrl, chapterPrices } = await setup();
+    const { program, bookKeypair, author, bookTitle, description,  genre, image_url, chapterPrices } = await setup();
 
     try {
       // First, add a book
       await program.methods
         .addBook(
           bookTitle,
-          metaUrl // Add meta_url parameter
+          description,  
+          genre, 
+          image_url
         )
         .accounts({
           book: bookKeypair.publicKey,
@@ -28,9 +30,16 @@ describe("Add Chapter", () => {
         "https://example.com/chapter3",
       ];
 
+      // Now add chapters
+      const chapterNames = [
+        "chapter 1",
+        "chapter 2",
+        "chapter 3",
+      ];
+
       for (let i = 0; i < chapterUrls.length; i++) {
         await program.methods
-          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i])) // Convert chapterPrices to BN
+          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i]), chapterNames[i]) // Convert chapterPrices to BN
           .accounts({
             book: bookKeypair.publicKey, // Ensure the book account is provided
             author: author.publicKey,
@@ -42,8 +51,9 @@ describe("Add Chapter", () => {
 
       const bookAccount = await program.account.book.fetch(bookKeypair.publicKey);
       const expectedChapters = chapterUrls.map((url, index) => ({
-        url,
         price: new anchor.BN(chapterPrices[index]),
+        url,
+        name: chapterNames[index],
         index,
         readers: [],
       }));

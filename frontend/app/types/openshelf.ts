@@ -1,4 +1,10 @@
-{
+/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/openshelf.json`.
+ */
+export type Openshelf = {
   "address": "AGVyPYiXUtSnKqqgLWcs5LAfh94ct1CtuaiCSFuGMxxW",
   "metadata": {
     "name": "openshelf",
@@ -8,7 +14,7 @@
   },
   "instructions": [
     {
-      "name": "add_book",
+      "name": "addBook",
       "discriminator": [
         181,
         117,
@@ -31,7 +37,7 @@
           "signer": true
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -55,7 +61,7 @@
       ]
     },
     {
-      "name": "add_chapter",
+      "name": "addChapter",
       "discriminator": [
         70,
         219,
@@ -80,17 +86,17 @@
           ]
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "chapter_url",
+          "name": "chapterUrl",
           "type": "string"
         },
         {
-          "name": "chapter_index",
+          "name": "chapterIndex",
           "type": "u8"
         },
         {
@@ -104,7 +110,7 @@
       ]
     },
     {
-      "name": "claim_staker_earnings",
+      "name": "claimStakerEarnings",
       "discriminator": [
         117,
         245,
@@ -126,14 +132,14 @@
           "signer": true
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "create_book_asset",
+      "name": "createBookAsset",
       "discriminator": [
         63,
         105,
@@ -167,18 +173,18 @@
           "signer": true
         },
         {
-          "name": "mpl_core_program",
+          "name": "mplCoreProgram",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "create_chapter_asset",
+      "name": "createChapterAsset",
       "discriminator": [
         234,
         23,
@@ -212,23 +218,23 @@
           "signer": true
         },
         {
-          "name": "mpl_core_program",
+          "name": "mplCoreProgram",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "chapter_index",
+          "name": "chapterIndex",
           "type": "u64"
         }
       ]
     },
     {
-      "name": "create_user_collection",
+      "name": "createUserCollection",
       "discriminator": [
         26,
         51,
@@ -255,18 +261,18 @@
           "signer": true
         },
         {
-          "name": "mpl_core_program",
+          "name": "mplCoreProgram",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "purchase_chapter",
+      "name": "purchaseChapter",
       "discriminator": [
         123,
         139,
@@ -296,19 +302,19 @@
           "writable": true
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "chapter_index",
+          "name": "chapterIndex",
           "type": "u8"
         }
       ]
     },
     {
-      "name": "purchase_full_book",
+      "name": "purchaseFullBook",
       "discriminator": [
         114,
         134,
@@ -338,14 +344,14 @@
           "writable": true
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "stake_on_book",
+      "name": "stakeOnBook",
       "discriminator": [
         63,
         5,
@@ -367,7 +373,7 @@
           "signer": true
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -381,7 +387,7 @@
   ],
   "accounts": [
     {
-      "name": "BaseCollectionV1",
+      "name": "baseCollectionV1",
       "discriminator": [
         0,
         0,
@@ -394,7 +400,7 @@
       ]
     },
     {
-      "name": "Book",
+      "name": "book",
       "discriminator": [
         121,
         34,
@@ -410,38 +416,38 @@
   "errors": [
     {
       "code": 6000,
-      "name": "AlreadyPurchased",
+      "name": "alreadyPurchased",
       "msg": "You have already purchased this chapter or book"
     },
     {
       "code": 6001,
-      "name": "NotQualifiedForStaking",
+      "name": "notQualifiedForStaking",
       "msg": "You must purchase all chapters or the full book before staking"
     },
     {
       "code": 6002,
-      "name": "InvalidChapterIndex",
+      "name": "invalidChapterIndex",
       "msg": "Invalid chapter index"
     },
     {
       "code": 6003,
-      "name": "InsufficientFunds",
-      "msg": "InsufficientFunds"
+      "name": "insufficientFunds",
+      "msg": "insufficientFunds"
     },
     {
       "code": 6004,
-      "name": "StakerNotFound",
+      "name": "stakerNotFound",
       "msg": "Stake not found for this staker"
     },
     {
       "code": 6005,
-      "name": "NoEarningsToClaim",
+      "name": "noEarningsToClaim",
       "msg": "No rewards to claim"
     }
   ],
   "types": [
     {
-      "name": "BaseCollectionV1",
+      "name": "baseCollectionV1",
       "type": {
         "kind": "struct",
         "fields": [
@@ -449,12 +455,12 @@
             "name": "key",
             "type": {
               "defined": {
-                "name": "Key"
+                "name": "key"
               }
             }
           },
           {
-            "name": "update_authority",
+            "name": "updateAuthority",
             "type": "pubkey"
           },
           {
@@ -466,18 +472,18 @@
             "type": "string"
           },
           {
-            "name": "num_minted",
+            "name": "numMinted",
             "type": "u32"
           },
           {
-            "name": "current_size",
+            "name": "currentSize",
             "type": "u32"
           }
         ]
       }
     },
     {
-      "name": "Book",
+      "name": "book",
       "type": {
         "kind": "struct",
         "fields": [
@@ -493,16 +499,16 @@
             "name": "metadata",
             "type": {
               "defined": {
-                "name": "MetaData"
+                "name": "metaData"
               }
             }
           },
           {
-            "name": "full_book_price",
+            "name": "fullBookPrice",
             "type": "u64"
           },
           {
-            "name": "total_stake",
+            "name": "totalStake",
             "type": "u64"
           },
           {
@@ -510,7 +516,7 @@
             "type": {
               "vec": {
                 "defined": {
-                  "name": "Chapter"
+                  "name": "chapter"
                 }
               }
             }
@@ -520,7 +526,7 @@
             "type": {
               "vec": {
                 "defined": {
-                  "name": "Stake"
+                  "name": "stake"
                 }
               }
             }
@@ -535,7 +541,7 @@
       }
     },
     {
-      "name": "Chapter",
+      "name": "chapter",
       "type": {
         "kind": "struct",
         "fields": [
@@ -565,33 +571,33 @@
       }
     },
     {
-      "name": "Key",
+      "name": "key",
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "Uninitialized"
+            "name": "uninitialized"
           },
           {
-            "name": "AssetV1"
+            "name": "assetV1"
           },
           {
-            "name": "HashedAssetV1"
+            "name": "hashedAssetV1"
           },
           {
-            "name": "PluginHeaderV1"
+            "name": "pluginHeaderV1"
           },
           {
-            "name": "PluginRegistryV1"
+            "name": "pluginRegistryV1"
           },
           {
-            "name": "CollectionV1"
+            "name": "collectionV1"
           }
         ]
       }
     },
     {
-      "name": "MetaData",
+      "name": "metaData",
       "type": {
         "kind": "struct",
         "fields": [
@@ -600,7 +606,7 @@
             "type": "string"
           },
           {
-            "name": "publish_date",
+            "name": "publishDate",
             "type": "i64"
           },
           {
@@ -608,14 +614,14 @@
             "type": "string"
           },
           {
-            "name": "image_url",
+            "name": "imageUrl",
             "type": "string"
           }
         ]
       }
     },
     {
-      "name": "Stake",
+      "name": "stake",
       "type": {
         "kind": "struct",
         "fields": [
@@ -635,4 +641,4 @@
       }
     }
   ]
-}
+};

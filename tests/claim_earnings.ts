@@ -3,14 +3,14 @@ import { assert } from "chai";
 import { setup } from "./setup";
 
 describe("Stake on Book", () => {
-  it("Can stake on a book and distribute earnings correctly", async () => {
+  it("Can stake on a book, distribute earnings correctly, and claim staker earnings", async () => {
     const { program, bookKeypair, author, reader2, staker1, staker2, platform, bookTitle, description,  genre, image_url, chapterPrices } = await setup();
 
     try {
       // Add a book
       await program.methods
         .addBook(
-          bookTitle,
+          bookTitle, 
           description,  
           genre, 
           image_url
@@ -102,6 +102,7 @@ describe("Stake on Book", () => {
 
       console.log("Expected author payment:", expectedAuthorPayment / anchor.web3.LAMPORTS_PER_SOL, "SOL");
 
+      
       assert.approximately(
         finalAuthorBalance - initialAuthorBalance,
         expectedAuthorPayment,
@@ -155,8 +156,86 @@ describe("Stake on Book", () => {
       console.log("Platform payment:", (finalPlatformBalance - initialPlatformBalance) / anchor.web3.LAMPORTS_PER_SOL, "SOL");
       console.log("Staker 1 earnings:", stakerStake1.earnings.toNumber() / anchor.web3.LAMPORTS_PER_SOL, "SOL");
       console.log("Staker 2 earnings:", stakerStake2.earnings.toNumber() / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+
+      // Claim earnings for Staker 1
+      console.log("Claiming earnings for Staker 1...");
+      const initialStaker1Balance = await program.provider.connection.getBalance(staker1.publicKey);
+      console.log("Initial Staker 1 balance:", initialStaker1Balance / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+
+      await program.methods
+        .claimStakerEarnings()
+        .accounts({
+          book: bookKeypair.publicKey,
+          staker: staker1.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([staker1])
+        .rpc();
+
+      const finalStaker1Balance = await program.provider.connection.getBalance(staker1.publicKey);
+      console.log("Final Staker 1 balance:", finalStaker1Balance / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+      console.log("Staker 1 claimed:", (finalStaker1Balance - initialStaker1Balance) / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+
+      // Claim earnings for Staker 2
+      console.log("Claiming earnings for Staker 2...");
+      const initialStaker2Balance = await program.provider.connection.getBalance(staker2.publicKey);
+      console.log("Initial Staker 2 balance:", initialStaker2Balance / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+
+      await program.methods
+        .claimStakerEarnings()
+        .accounts({
+          book: bookKeypair.publicKey,
+          staker: staker2.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .signers([staker2])
+        .rpc();
+
+      const finalStaker2Balance = await program.provider.connection.getBalance(staker2.publicKey);
+      console.log("Final Staker 2 balance:", finalStaker2Balance / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+      console.log("Staker 2 claimed:", (finalStaker2Balance - initialStaker2Balance) / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+
+      // Verify that earnings were claimed correctly
+      const updatedBookAccount = await program.account.book.fetch(bookKeypair.publicKey);
+      const updatedStakerStake1 = updatedBookAccount.stakes.find(
+        (stake) => stake.staker.equals(staker1.publicKey)
+      );
+      const updatedStakerStake2 = updatedBookAccount.stakes.find(
+        (stake) => stake.staker.equals(staker2.publicKey)
+      );
+
+      console.log("Updated Staker 1 earnings:", updatedStakerStake1.earnings.toNumber() / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+      console.log("Updated Staker 2 earnings:", updatedStakerStake2.earnings.toNumber() / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+
+      assert.approximately(
+        finalStaker1Balance - initialStaker1Balance,
+        stakerStake1.earnings.toNumber(),
+        1000000, // Allow for a small difference due to transaction fees
+        "Staker 1 should have claimed the correct amount of earnings"
+      );
+
+      assert.approximately(
+        finalStaker2Balance - initialStaker2Balance,
+        stakerStake2.earnings.toNumber(),
+        1000000, // Allow for a small difference due to transaction fees
+        "Staker 2 should have claimed the correct amount of earnings"
+      );
+
+      assert.equal(
+        updatedStakerStake1.earnings.toNumber(),
+        0,
+        "Staker 1 earnings should be reset to 0 after claiming"
+      );
+
+      assert.equal(
+        updatedStakerStake2.earnings.toNumber(),
+        0,
+        "Staker 2 earnings should be reset to 0 after claiming"
+      );
+
+      console.log("Earnings claimed successfully for both stakers");
     } catch (error) {
-      console.error("Error in multi-staker full book purchase test:", error);
+      console.error("Error in multi-staker full book purchase and earnings claim test:", error);
       throw error;
     }
   });

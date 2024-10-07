@@ -4,14 +4,16 @@ import { setup } from "./setup";
 
 describe("Filter Books", () => {
   it("Should filter books by author and number of stakers", async () => {
-    const { program, bookKeypair, author, staker1, staker2, bookTitle, metaUrl, chapterPrices } = await setup();
+    const { program, bookKeypair, author, staker1, staker2, bookTitle, description,  genre, image_url, chapterPrices } = await setup();
 
     try {
       // Add a book
       await program.methods
         .addBook(
           bookTitle,
-          metaUrl
+          description,  
+          genre, 
+          image_url
         )
         .accounts({
           book: bookKeypair.publicKey,
@@ -27,10 +29,11 @@ describe("Filter Books", () => {
         "https://example.com/chapter2",
         "https://example.com/chapter3",
       ];
+      const chapterNames = ["Chapter 1", "Chapter 2", "Chapter 3"];
 
       for (let i = 0; i < chapterUrls.length; i++) {
         await program.methods
-          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i]))
+          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i]), chapterNames[i])
           .accounts({
             book: bookKeypair.publicKey,
             author: author.publicKey,

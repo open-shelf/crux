@@ -8,4 +8,10 @@ pub enum ProgramErrorCode {
     NotQualifiedForStaking,
     #[msg("Invalid chapter index")]
     InvalidChapterIndex,
+    #[msg("InsufficientFunds")]
+    InsufficientFunds,
+    #[msg("Stake not found for this staker")]
+    StakerNotFound,
+    #[msg("No rewards to claim")]
+    NoEarningsToClaim,
 }

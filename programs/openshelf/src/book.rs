@@ -1,11 +1,27 @@
 use crate::state::*;
 use anchor_lang::prelude::*;
 
-pub fn add_book(ctx: Context<AddBook>, title: String, meta_url: String) -> Result<()> {
+pub fn add_book(
+    ctx: Context<AddBook>,
+    title: String,
+    description: String,
+    genre: String,
+    image_url: String,
+) -> Result<()> {
+    let clock = Clock::get()?;
+    let current_timestamp = clock.unix_timestamp;
+
+    let metadata = MetaData {
+        description,
+        publish_date: current_timestamp,
+        genre,
+        image_url,
+    };
+
     let book = &mut ctx.accounts.book;
     book.author = *ctx.accounts.author.key;
     book.title = title;
-    book.meta_url = meta_url; // Add meta_url field
+    book.metadata = metadata;
     book.full_book_price = 0;
     book.total_stake = 0;
     book.chapters = Vec::new();
@@ -21,7 +37,11 @@ pub struct AddBook<'info> {
         space = 8 + // discriminator
                 32 + // author pubkey
                 4 + 50 + // title (4 bytes for string length + max 50 chars)
-                4 + 50 + // meta_url (4 bytes for string length + max 50 chars)
+                // MetaData fields
+                4 + 200 + // description (4 bytes for string length + max 200 chars)
+                8 + // publish_date (i64)
+                4 + 50 + // genre (4 bytes for string length + max 50 chars)
+                4 + 200 + // image_url (4 bytes for string length + max 200 chars)
                 8 + // full_book_price
                 8 + // total_stake
                 4 + (32 * 10) + // readers (4 bytes for vec length + up to 10 Pubkeys)

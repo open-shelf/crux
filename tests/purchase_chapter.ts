@@ -4,14 +4,16 @@ import { setup } from "./setup";
 
 describe("Purchase Chapter", () => {
   it("Can purchase a chapter and distribute earnings", async () => {
-    const { program, bookKeypair, author, reader1, staker1, platform, bookTitle, metaUrl, chapterPrices } = await setup();
+    const { program, bookKeypair, author, reader1, staker1, platform, bookTitle, description,  genre, image_url, chapterPrices } = await setup();
 
     try {
       // Add a book
       await program.methods
         .addBook(
           bookTitle,
-          metaUrl // Add meta_url parameter
+          description,  
+          genre, 
+          image_url
         )
         .accounts({
           book: bookKeypair.publicKey,
@@ -22,8 +24,10 @@ describe("Purchase Chapter", () => {
         .rpc();
 
       // Add a chapter
+      const chapterUrl = "https://example.com/chapter1";
+      const chapterName = "Chapter 1";
       await program.methods
-        .addChapter("https://example.com/chapter1", 0, new anchor.BN(chapterPrices[0])) // Convert chapterPrices to BN
+        .addChapter(chapterUrl, 0, new anchor.BN(chapterPrices[0]), chapterName)
         .accounts({
           book: bookKeypair.publicKey,
           author: author.publicKey,
@@ -33,7 +37,7 @@ describe("Purchase Chapter", () => {
         .rpc();
 
       // Stake on the book
-      const stakeAmount = new anchor.BN(1 * anchor.web3.LAMPORTS_PER_SOL); // 1 SOL stake
+      const stakeAmount = new anchor.BN(1 * anchor.web3.LAMPORTS_PER_SOL);
       await program.methods
         .stakeOnBook(stakeAmount)
         .accounts({

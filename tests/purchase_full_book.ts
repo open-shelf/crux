@@ -4,14 +4,16 @@ import { setup } from "./setup";
 
 describe("Purchase Full Book", () => {
   it("Can purchase a full book and distribute earnings", async () => {
-    const { program, bookKeypair, author, reader2, staker1, platform, bookTitle, metaUrl, chapterPrices } = await setup();
+    const { program, bookKeypair, author, reader2, staker1, platform, bookTitle, description,  genre, image_url, chapterPrices } = await setup();
 
     try {
       // Add a book
       await program.methods
         .addBook(
           bookTitle,
-          metaUrl // Add meta_url parameter
+          description,  
+          genre, 
+          image_url
         )
         .accounts({
           book: bookKeypair.publicKey,
@@ -27,10 +29,11 @@ describe("Purchase Full Book", () => {
         "https://example.com/chapter2",
         "https://example.com/chapter3",
       ];
+      const chapterNames = ["Chapter 1", "Chapter 2", "Chapter 3"];
 
       for (let i = 0; i < chapterUrls.length; i++) {
         await program.methods
-          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i])) // Convert chapterPrices to BN
+          .addChapter(chapterUrls[i], i, new anchor.BN(chapterPrices[i]), chapterNames[i])
           .accounts({
             book: bookKeypair.publicKey,
             author: author.publicKey,
