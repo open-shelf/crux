@@ -70,4 +70,19 @@ pub mod openshelf {
     ) -> Result<()> {
         nft::create_chapter_asset(ctx, chapter_index)
     }
+
+    pub fn create_user_collection_and_book_asset(
+        ctx: Context<CreateUserCollectionAndBookAsset>,
+        chapter_index: usize,
+    ) -> Result<()> {
+        nft::create_user_collection_and_book_asset(ctx, chapter_index)
+    }
+
+    pub fn add_chapter_attribute(
+        ctx: Context<AddChapterAttribute>,
+        chapter_index: usize,
+    ) -> Result<()> {
+        nft::add_chapter_attribute(ctx, chapter_index);
+        Ok(())
+    }
 }

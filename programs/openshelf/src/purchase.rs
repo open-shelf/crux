@@ -75,6 +75,13 @@ pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Res
         book.readers.push(buyer_key);
     }
 
+    // Mint the Book NFT
+    // 1. Check if User has a collection already
+    //      a. create user collection if not exists
+    // 2. Check if Book NFT already exists
+    //      a. create BookNFT if not exists
+    // 3. Set the attribute chapter
+
     Ok(())
 }
 
@@ -140,6 +147,11 @@ pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
             chapter.readers.push(buyer_key);
         }
     }
+
+    // Mint the Book NFT
+    // 1. Check if User has a collection already
+    //      a. create user collection if not exists
+    // 2. Add the Book to the collection with all chapter attribute set
 
     Ok(())
 }
