@@ -66,7 +66,7 @@ pub mod openshelf {
 
     pub fn create_chapter_asset(
         ctx: Context<CreateChapterAsset>,
-        chapter_index: u64,
+        chapter_index: usize,
     ) -> Result<()> {
         nft::create_chapter_asset(ctx, chapter_index)
     }
@@ -82,7 +82,6 @@ pub mod openshelf {
         ctx: Context<AddChapterAttribute>,
         chapter_index: usize,
     ) -> Result<()> {
-        nft::add_chapter_attribute(ctx, chapter_index);
-        Ok(())
+        nft::add_chapter_attribute(ctx, chapter_index)
     }
 }
