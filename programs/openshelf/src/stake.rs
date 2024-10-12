@@ -41,6 +41,16 @@ pub fn stake_on_book(ctx: Context<StakeOnBook>, amount: u64) -> Result<()> {
         });
     }
 
+    let cpi_context = CpiContext::new(
+        ctx.accounts.system_program.to_account_info(),
+        anchor_lang::system_program::Transfer {
+            from: ctx.accounts.staker.to_account_info(),
+            to: book.to_account_info(),
+        },
+    );
+
+    anchor_lang::system_program::transfer(cpi_context, amount)?;
+
     book.total_stake += amount;
 
     Ok(())
