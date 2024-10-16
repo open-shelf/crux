@@ -7,9 +7,10 @@ import * as anchor from "@coral-xyz/anchor";
 import idl from "./idl/openshelf.json";
 import { ProgramUtils } from "./utils/programUtils";
 import Image from "next/image";
+import { AssetV1 } from "@metaplex-foundation/mpl-core";
 
 // Assuming you have a type definition for your program
-import { Openshelf } from "./types/openshelf";
+// import { Openshelf } from "./types/openshelf";
 
 // New ErrorPopup component
 const ErrorPopup: React.FC<{ message: string; onClose: () => void }> = ({
@@ -66,6 +67,8 @@ const WalletSection: React.FC = () => {
   const [bookGenre, setBookGenre] = useState<string>("");
   const [collectionAssets, setCollectionAssets] = useState<any[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<number | null>(null);
+  const [ownedNFTs, setOwnedNFTs] = useState<AssetV1[]>([]);
+  const [selectedNFT, setSelectedNFT] = useState<number | null>(null);
 
   useEffect(() => {
     const initializeProgram = async () => {
@@ -216,16 +219,26 @@ const WalletSection: React.FC = () => {
     }
     try {
       console.log("Purchasing chapter...");
+      const bookNftAddress = new PublicKey(
+        bookDetails.bookNftAddress || anchor.web3.Keypair.generate().publicKey
+      );
+      const collectionKey = new PublicKey(collectionPublicKey);
       const tx = await programUtils.purchaseChapter(
         new PublicKey(bookPublicKey),
-        bookDetails.author,
-        Number(purchaseChapterIndex)
+        new PublicKey(bookDetails.author),
+        Number(purchaseChapterIndex),
+        bookNftAddress,
+        collectionKey
       );
       console.log("Transaction signature", tx);
       await updateBookAndBalance();
     } catch (error: unknown) {
       console.error("Error purchasing chapter:", error);
-      setError(`Error purchasing chapter: ${(error as Error).message}`);
+      if (error instanceof Error) {
+        setError(`Error purchasing chapter: ${error.message}`);
+      } else {
+        setError(`An unknown error occurred while purchasing the chapter`);
+      }
     }
   };
 
@@ -234,11 +247,18 @@ const WalletSection: React.FC = () => {
       console.error("Program not initialized or book not fetched");
       return;
     }
+
+    const bookNftAddress = new PublicKey(
+      bookDetails.bookNftAddress || anchor.web3.Keypair.generate().publicKey
+    );
+    const collectionKey = new PublicKey(collectionPublicKey);
     try {
       console.log("Purchasing full book...");
       const tx = await programUtils.purchaseFullBook(
         new PublicKey(bookPublicKey),
-        bookDetails.author
+        bookDetails.author,
+        collectionKey,
+        bookNftAddress
       );
       console.log("Transaction signature", tx);
       await updateBookAndBalance();
@@ -455,6 +475,47 @@ const WalletSection: React.FC = () => {
     }
   };
 
+  const fetchAllNFTs = async () => {
+    if (!programUtils || !publicKey) {
+      console.error("Program not initialized or wallet not connected");
+      return;
+    }
+    try {
+      console.log("Fetching all NFTs...");
+      const assets = await programUtils.fetAllNFTByOwner(publicKey);
+      setOwnedNFTs(assets);
+      setSelectedNFT(assets.length > 0 ? 0 : null);
+      setError(null);
+    } catch (error: unknown) {
+      console.error("Error fetching NFTs:", error);
+      setError(`Error fetching NFTs: ${(error as Error).message}`);
+    }
+  };
+
+  const createBookNFT = async () => {
+    if (!programUtils || !bookDetails) {
+      console.error("Program not initialized or book not fetched");
+      return;
+    }
+    if (!collectionPublicKey) {
+      setError("Please enter a collection public key");
+      return;
+    }
+    try {
+      console.log("Creating Book NFT...");
+      const tx = await programUtils.createBookNFT(
+        new PublicKey(bookPublicKey),
+        new PublicKey(bookDetails.author),
+        new PublicKey(collectionPublicKey)
+      );
+      console.log("Transaction signature", tx);
+      await updateBookAndBalance();
+    } catch (error: unknown) {
+      console.error("Error creating Book NFT:", error);
+      setError(`Error creating Book NFT: ${(error as Error).message}`);
+    }
+  };
+
   return (
     <div className="flex flex-col md:flex-row gap-6 p-6 bg-gray-100 text-gray-800">
       {error && <ErrorPopup message={error} onClose={clearError} />}
@@ -573,8 +634,14 @@ const WalletSection: React.FC = () => {
           <button onClick={purchaseChapter} className="btn-primary w-full mb-2">
             Purchase Chapter
           </button>
-          <button onClick={purchaseFullBook} className="btn-secondary w-full">
+          <button
+            onClick={purchaseFullBook}
+            className="btn-secondary w-full mb-2"
+          >
             Purchase Full Book
+          </button>
+          <button onClick={createBookNFT} className="btn-primary w-full">
+            Create Book NFT
           </button>
         </div>
 
@@ -763,6 +830,88 @@ const WalletSection: React.FC = () => {
           ) : (
             <p className="text-black">
               No collection details available. Please fetch a collection.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Owned NFTs */}
+      <div className="md:w-1/2">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">Owned NFTs</h3>
+          <button onClick={fetchAllNFTs} className="btn-primary w-full mb-4">
+            Fetch All Owned NFTs
+          </button>
+          {ownedNFTs.length > 0 ? (
+            <div>
+              <p>
+                <strong>Number of owned NFTs:</strong> {ownedNFTs.length}
+              </p>
+              <div className="mb-4">
+                <label htmlFor="nftSelect" className="block mb-2">
+                  Select NFT:
+                </label>
+                <select
+                  id="nftSelect"
+                  value={selectedNFT !== null ? selectedNFT : ""}
+                  onChange={(e) => setSelectedNFT(Number(e.target.value))}
+                  className="w-full p-2 border rounded"
+                >
+                  {ownedNFTs.map((asset, index) => (
+                    <option key={index} value={index}>
+                      NFT {index + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedNFT !== null && (
+                <div>
+                  <p>
+                    <strong>Public Key:</strong>{" "}
+                    {ownedNFTs[selectedNFT].publicKey.toString()}
+                  </p>
+                  <p>
+                    <strong>URI:</strong> {ownedNFTs[selectedNFT].uri}
+                  </p>
+                  {ownedNFTs[selectedNFT].content && (
+                    <div>
+                      <h4 className="text-lg font-semibold mt-4 mb-2">
+                        Metadata
+                      </h4>
+                      <p>
+                        <strong>Name:</strong>{" "}
+                        {ownedNFTs[selectedNFT].content.metadata.name}
+                      </p>
+                      <p>
+                        <strong>Symbol:</strong>{" "}
+                        {ownedNFTs[selectedNFT].content.metadata.symbol}
+                      </p>
+                      <p>
+                        <strong>Description:</strong>{" "}
+                        {ownedNFTs[selectedNFT].content.metadata.description}
+                      </p>
+                      {ownedNFTs[selectedNFT].content.files[0]?.uri && (
+                        <div className="mt-4">
+                          <Image
+                            src={ownedNFTs[selectedNFT].content.files[0].uri}
+                            alt={
+                              ownedNFTs[selectedNFT].content.metadata.name ||
+                              "NFT Image"
+                            }
+                            width={300}
+                            height={300}
+                            className="rounded-lg"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-black">
+              No owned NFTs available. Please fetch your NFTs.
             </p>
           )}
         </div>

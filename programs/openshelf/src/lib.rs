@@ -14,7 +14,7 @@ use nft::*;
 use purchase::*;
 use stake::*;
 
-declare_id!("AGVyPYiXUtSnKqqgLWcs5LAfh94ct1CtuaiCSFuGMxxW");
+declare_id!("EAuy5RhimidaeNiW7S48FSbxnF16f2vhdLUuGqYBcoS7");
 
 #[program]
 pub mod openshelf {
@@ -60,14 +60,24 @@ pub mod openshelf {
         nft::create_user_collection(ctx)
     }
 
-    pub fn create_book_asset(ctx: Context<CreateBookAsset>) -> Result<()> {
-        nft::create_book_asset(ctx)
+    pub fn create_book_asset_full_ctx(ctx: Context<PurchaseFullBook>) -> Result<()> {
+        nft::create_book_asset_full_ctx(
+            ctx,
+            PurchaseType::FullBookPurchase,
+            "transaction_id".to_string(),
+        )?;
+        Ok(())
     }
+    // Deprecated: Assets created along with purchasing
+    // pub fn create_book_asset(ctx: Context<CreateBookAsset>, chapter_index: u8) -> Result<()> {
+    //     let transactionId = "".to_string();
+    //     let purchase_type = PurchaseType::ChapterPurchase {
+    //         chapter_index: chapter_index,
+    //     };
+    //     nft::create_book_asset(ctx, purchase_type, transactionId)
+    // }
 
-    pub fn create_chapter_asset(
-        ctx: Context<CreateChapterAsset>,
-        chapter_index: u64,
-    ) -> Result<()> {
-        nft::create_chapter_asset(ctx, chapter_index)
-    }
+    // pub fn create_chapter_asset(ctx: Context<CreateChapterAsset>, chapter_index: u8) -> Result<()> {
+    //     nft::create_chapter_asset(ctx, chapter_index)
+    // }
 }

@@ -7,11 +7,10 @@ import { PROGRAM_ADDRESS as metaplexProgramId } from "@metaplex-foundation/mpl-t
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
 import { walletAdapterIdentity } from '@metaplex-foundation/umi-signer-wallet-adapters'
 import { useWallet } from '@solana/wallet-adapter-react'
-import { AssetV1, fetchAssetsByOwner } from '@metaplex-foundation/mpl-core'
+import { AssetV1, fetchAssetsByOwner, fetchAssetsByCollection } from '@metaplex-foundation/mpl-core'
 import { publicKey } from '@metaplex-foundation/umi'
 import { fromWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters';
-
-const MPL_CORE_PROGRAM_ID = new PublicKey("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d");
+import { MPL_CORE_PROGRAM_ID } from '@metaplex-foundation/mpl-core';
 
 export class ProgramUtils {
   private program: Program<Openshelf>;
@@ -27,6 +26,7 @@ export class ProgramUtils {
     setProvider(this.provider);
 
     const programId = new PublicKey(idl.address);
+    console.log("Program ID from IDL:", programId.toString());
     this.program = new Program(idl as Idl, this.provider) as Program<Openshelf>;
   }
 
@@ -97,13 +97,52 @@ export class ProgramUtils {
     return tx;
   }
 
-  async purchaseChapter(bookPubKey: PublicKey, authorPubKey: PublicKey, chapterIndex: number): Promise<string> {
+  async purchaseChapter(
+    bookPubKey: PublicKey, 
+    authorPubKey: PublicKey, 
+    chapterIndex: number, 
+    collectionKey: PublicKey,
+    bookNftAddress: PublicKey
+  ): Promise<string> {
+    console.log("Purchasing chapter with the following details:");
+    console.log("Book Public Key:", bookPubKey.toString());
+    console.log("Author Public Key:", authorPubKey.toString());
+    console.log("Chapter Index:", chapterIndex);
+    console.log("Collection Key:", collectionKey.toString());
+    console.log("Book NFT Address:", bookNftAddress.toString());
+    console.log("Program ID:", this.program.programId.toString());
+
+    try {
+      const tx = await this.program.methods
+        .purchaseChapter(chapterIndex)
+        .accounts({
+          book: bookPubKey,
+          buyer: this.provider.wallet.publicKey,
+          author: authorPubKey,
+          collection: collectionKey,
+          mplCoreProgram: MPL_CORE_PROGRAM_ID,
+          bookNft: bookNftAddress,
+          platform: new PublicKey("6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"),
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc();
+      return tx;
+    } catch (error) {
+      console.error("Error in purchaseChapter:", error);
+      throw error;
+    }
+  }
+
+  async purchaseFullBook(bookPubKey: PublicKey, authorPubKey: PublicKey, collectionKey: PublicKey, bookNftAddress: PublicKey): Promise<string> {
     const tx = await this.program.methods
-      .purchaseChapter(chapterIndex)
+      .purchaseFullBook()
       .accounts({
         book: bookPubKey,
         buyer: this.provider.wallet.publicKey,
         author: authorPubKey,
+        collection: collectionKey,
+        mplCoreProgram: MPL_CORE_PROGRAM_ID,
+        bookNft: bookNftAddress,
         platform: new PublicKey("6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"),
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -111,19 +150,25 @@ export class ProgramUtils {
     return tx;
   }
 
-  async purchaseFullBook(bookPubKey: PublicKey, authorPubKey: PublicKey): Promise<string> {
+  async createBookNFT(bookPubKey: PublicKey, authorPubKey: PublicKey, collectionKey: PublicKey): Promise<string> {
+    const bnft = anchor.web3.Keypair.generate();
     const tx = await this.program.methods
-      .purchaseFullBook()
+      .createBookAssetFullCtx()
       .accounts({
         book: bookPubKey,
         buyer: this.provider.wallet.publicKey,
         author: authorPubKey,
+        collection: collectionKey,
+        mplCoreProgram: MPL_CORE_PROGRAM_ID,
+        bookNft: bnft.publicKey,
         platform: new PublicKey("6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"),
         systemProgram: anchor.web3.SystemProgram.programId,
       })
+      .signers([bnft])
       .rpc();
     return tx;
   }
+
 
   async stakeOnBook(bookPubKey: PublicKey, amount: number): Promise<string> {
     const tx = await this.program.methods
@@ -154,17 +199,21 @@ export class ProgramUtils {
 
   async createUserCollection(): Promise<string> {
     const collection = Keypair.generate();
+    const userNFTAsset = Keypair.generate();
     console.log("Generated collection keypair:", collection.publicKey.toString());
+    console.log("Generated user NFT keypair:", userNFTAsset.publicKey.toString());
+
     const tx = await this.program.methods
       .createUserCollection()
       .accounts({
         signer: this.provider.wallet.publicKey,
         payer: this.provider.wallet.publicKey,
         collection: collection.publicKey,
+        userNftAsset: userNFTAsset.publicKey,
         mplCoreProgram: MPL_CORE_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([collection])
+      .signers([collection, userNFTAsset])
       .rpc();
     return tx;
   }
@@ -219,14 +268,15 @@ export class ProgramUtils {
 
   async fetchCollection(collectionId: PublicKey): Promise<AssetV1[]> {
 
-    const umi = createUmi('http://127.0.0.1:8899')
+    const umi = createUmi('https://api.devnet.solana.com')
+    //const umi = createUmi('http://127.0.0.1:8899')
 
     // Register Wallet Adapter to Umi
     umi.use(walletAdapterIdentity(this.provider.wallet))
 
-    const umiPublicKey = fromWeb3JsPublicKey(this.provider.wallet.publicKey);
+    const collectionPublicKey = fromWeb3JsPublicKey(collectionId);
 
-    const assetsByOwner = await fetchAssetsByOwner(umi, umiPublicKey, {
+    const assetsByOwner = await fetchAssetsByCollection(umi, collectionPublicKey, {
       skipDerivePlugins: false,
     })
     
@@ -235,5 +285,37 @@ export class ProgramUtils {
     return assetsByOwner;
   }
 
+  async fetAllNFTByOwner(owner: PublicKey): Promise<AssetV1[]> {
+    const umi = createUmi('https://api.devnet.solana.com')
+    //const umi = createUmi('http://127.0.0.1:8899')
+    umi.use(walletAdapterIdentity(this.provider.wallet))
+
+    const umiPublicKey = fromWeb3JsPublicKey(owner);
+
+    const assetsByOwner = await fetchAssetsByOwner(umi, umiPublicKey, {
+      skipDerivePlugins: false,
+    })
+
+    console.log("All NFTs owned by", owner.toString());
+    assetsByOwner.forEach((asset, index) => {
+      console.log(`Asset ${index + 1}:`);
+      console.log("  Public Key:", asset.publicKey.toString());
+      console.log("  URI:", asset.uri);
+      console.log("  Plugins:");
+      
+      // Check for collection_id in attributes
+      if (asset.attributes) {
+        const attributes = asset.attributes?.attributeList;
+        const collectionIdAttribute = attributes.find(attr => attr.key === 'collection_id');
+        if (collectionIdAttribute) {
+          console.log("  Collection ID:", collectionIdAttribute.value);
+        }
+      }
+      
+      console.log("---");
+    });
+
+    return assetsByOwner;
+  }
 
 }

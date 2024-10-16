@@ -1,6 +1,9 @@
 use crate::errors::*;
+use crate::nft;
 use crate::state::*;
+use crate::PurchaseType;
 use anchor_lang::prelude::*;
+use mpl_core::accounts::BaseCollectionV1;
 
 pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Result<()> {
     let book = &mut ctx.accounts.book;
@@ -66,6 +69,11 @@ pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Res
         .readers
         .push(buyer_key);
 
+    let transactionId = "".to_string(); // To be replaced by transaction Id
+    let mut purchase_type = PurchaseType::ChapterPurchase {
+        chapter_index: chapter_index,
+    };
+
     // Check if the buyer has purchased all chapters
     if book
         .chapters
@@ -73,9 +81,22 @@ pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Res
         .all(|chapter| chapter.readers.contains(&buyer_key))
     {
         book.readers.push(buyer_key);
+        purchase_type = PurchaseType::FullBookPurchase;
+    }
+
+    let transaction_id = "".to_string();
+    // Check if book NFT exists already
+    if check_book_nft_exists(&ctx.accounts.book_nft) {
+        nft::update_attributes_plugin(ctx, chapter_index, transaction_id)?;
+    } else {
+        nft::create_book_asset(ctx, purchase_type, transaction_id.clone())?;
     }
 
     Ok(())
+}
+
+fn check_book_nft_exists(book_nft: &AccountInfo) -> bool {
+    book_nft.data_is_empty()
 }
 
 pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
@@ -141,6 +162,9 @@ pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
         }
     }
 
+    let transaction_id = "".to_string();
+    nft::create_book_asset_full_ctx(ctx, PurchaseType::FullBookPurchase, transaction_id.clone())?;
+
     Ok(())
 }
 
@@ -153,6 +177,14 @@ pub struct PurchaseFullBook<'info> {
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub author: AccountInfo<'info>,
+    /// CHECK: This is used for reference
+    pub collection: AccountInfo<'info>,
+    /// CHECK: This is the MPL Core program ID
+    #[account(address = mpl_core::ID)]
+    pub mpl_core_program: UncheckedAccount<'info>,
+    /// CHECK: This is used for updating the NFT
+    #[account(mut)]
+    pub book_nft: Signer<'info>,
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub platform: AccountInfo<'info>,
@@ -168,6 +200,14 @@ pub struct PurchaseChapter<'info> {
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub author: AccountInfo<'info>,
+    /// CHECK: This is used for reference
+    pub collection: AccountInfo<'info>,
+    /// CHECK: This is the MPL Core program ID
+    #[account(address = mpl_core::ID)]
+    pub mpl_core_program: UncheckedAccount<'info>,
+    /// CHECK: This is used for updating the NFT
+    #[account(mut)]
+    pub book_nft: AccountInfo<'info>,
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub platform: AccountInfo<'info>,

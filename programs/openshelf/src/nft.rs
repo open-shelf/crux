@@ -1,11 +1,58 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{
+    prelude::*,
+    solana_program::{program::invoke, system_program},
+};
 use mpl_core::{
-    accounts::BaseCollectionV1,
-    instructions::{CreateCollectionV2CpiBuilder, CreateV2CpiBuilder},
-    types::{PermanentFreezeDelegate, Plugin, PluginAuthorityPair},
+    accounts::{BaseAssetV1, BaseCollectionV1},
+    collection,
+    instructions::{
+        AddPluginV1CpiBuilder, CreateCollectionV2CpiBuilder, CreateV2CpiBuilder,
+        UpdatePluginV1Builder,
+    },
+    types::{
+        Attribute, Attributes, PermanentFreezeDelegate, Plugin, PluginAuthority,
+        PluginAuthorityPair,
+    },
+    Asset,
 };
 
-use crate::state::Book;
+use crate::{state::Book, PurchaseChapter, PurchaseFullBook};
+
+pub enum PurchaseType {
+    FullBookPurchase,
+    ChapterPurchase { chapter_index: u8 },
+}
+
+pub fn create_user_nft(ctx: Context<CreateUserCollection>) -> Result<()> {
+    let mut plugins = vec![];
+
+    plugins.push(PluginAuthorityPair {
+        plugin: Plugin::PermanentFreezeDelegate(PermanentFreezeDelegate { frozen: true }),
+        authority: None,
+    });
+
+    plugins.push(PluginAuthorityPair {
+        plugin: Plugin::Attributes(Attributes {
+            attribute_list: vec![Attribute {
+                key: "collection_id".to_string(),
+                value: ctx.accounts.collection.key.to_string(),
+            }],
+        }),
+        authority: None,
+    });
+
+    CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
+        .asset(&ctx.accounts.user_nft_asset.to_account_info())
+        .payer(&ctx.accounts.payer.to_account_info())
+        .owner(Some(&ctx.accounts.payer.to_account_info()))
+        .system_program(&ctx.accounts.system_program.to_account_info())
+        .name("OpenShelf User".to_string())
+        .uri("openshelf.xyz".to_string())
+        .plugins(plugins)
+        .invoke()?;
+
+    Ok(())
+}
 
 pub fn create_user_collection(ctx: Context<CreateUserCollection>) -> Result<()> {
     let mut collection_plugins = vec![];
@@ -24,10 +71,16 @@ pub fn create_user_collection(ctx: Context<CreateUserCollection>) -> Result<()> 
         .plugins(collection_plugins)
         .invoke()?;
 
+    create_user_nft(ctx)?;
+
     Ok(())
 }
 
-pub fn create_book_asset(ctx: Context<CreateBookAsset>) -> Result<()> {
+pub fn create_book_asset(
+    ctx: Context<PurchaseChapter>,
+    purchase_type: PurchaseType,
+    transaction_id: String,
+) -> Result<()> {
     let mut plugins = vec![];
 
     plugins.push(PluginAuthorityPair {
@@ -35,12 +88,80 @@ pub fn create_book_asset(ctx: Context<CreateBookAsset>) -> Result<()> {
         authority: None,
     });
 
+    let plugin = match purchase_type {
+        PurchaseType::FullBookPurchase => Plugin::Attributes(Attributes {
+            attribute_list: vec![Attribute {
+                key: "fully_purchased".to_string(),
+                value: transaction_id,
+            }],
+        }),
+        PurchaseType::ChapterPurchase { chapter_index } => Plugin::Attributes(Attributes {
+            attribute_list: vec![Attribute {
+                key: chapter_index.to_string(),
+                value: transaction_id,
+            }],
+        }),
+    };
+
+    plugins.push(PluginAuthorityPair {
+        plugin: plugin,
+        authority: Some(PluginAuthority::UpdateAuthority),
+    });
+
     let book = &ctx.accounts.book;
     CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
-        .asset(&ctx.accounts.asset.to_account_info())
+        .asset(&ctx.accounts.book_nft.to_account_info())
         .collection(Some(&ctx.accounts.collection.to_account_info()))
-        .payer(&ctx.accounts.payer.to_account_info())
-        .owner(Some(&ctx.accounts.payer.to_account_info()))
+        .payer(&&ctx.accounts.buyer.to_account_info())
+        .owner(Some(&ctx.accounts.buyer.to_account_info()))
+        .system_program(&ctx.accounts.system_program.to_account_info())
+        .name(book.title.clone())
+        .uri(book.metadata.image_url.to_string())
+        .plugins(plugins)
+        //.authority(Some(&ctx.accounts.system_program))
+        .invoke()?;
+
+    Ok(())
+}
+
+pub fn create_book_asset_full_ctx(
+    ctx: Context<PurchaseFullBook>,
+    purchase_type: PurchaseType,
+    transaction_id: String,
+) -> Result<()> {
+    let mut plugins = vec![];
+
+    plugins.push(PluginAuthorityPair {
+        plugin: Plugin::PermanentFreezeDelegate(PermanentFreezeDelegate { frozen: true }),
+        authority: None,
+    });
+
+    let plugin = match purchase_type {
+        PurchaseType::FullBookPurchase => Plugin::Attributes(Attributes {
+            attribute_list: vec![Attribute {
+                key: "fully_purchased".to_string(),
+                value: transaction_id,
+            }],
+        }),
+        PurchaseType::ChapterPurchase { chapter_index } => Plugin::Attributes(Attributes {
+            attribute_list: vec![Attribute {
+                key: chapter_index.to_string(),
+                value: transaction_id,
+            }],
+        }),
+    };
+
+    // plugins.push(PluginAuthorityPair {
+    //     plugin: plugin,
+    //     authority: None,
+    // });
+
+    let book = &ctx.accounts.book;
+    CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
+        .asset(&ctx.accounts.book_nft.to_account_info())
+        .collection(Some(&ctx.accounts.collection.to_account_info()))
+        .payer(&ctx.accounts.buyer.to_account_info())
+        .owner(Some(&ctx.accounts.buyer.to_account_info()))
         .system_program(&ctx.accounts.system_program.to_account_info())
         .name(book.title.clone())
         .uri(book.metadata.image_url.to_string())
@@ -50,7 +171,30 @@ pub fn create_book_asset(ctx: Context<CreateBookAsset>) -> Result<()> {
     Ok(())
 }
 
-pub fn create_chapter_asset(ctx: Context<CreateChapterAsset>, chapter_index: u64) -> Result<()> {
+pub fn update_attributes_plugin(
+    ctx: Context<PurchaseChapter>,
+    chapter_index: u8,
+    transaction_id: String,
+) -> Result<()> {
+    let plugin = Plugin::Attributes(Attributes {
+        attribute_list: vec![Attribute {
+            key: chapter_index.to_string(),
+            value: transaction_id,
+        }],
+    });
+
+    AddPluginV1CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
+        .asset(&ctx.accounts.book_nft)
+        .plugin(plugin)
+        .collection(Some(&ctx.accounts.collection))
+        .payer(&ctx.accounts.buyer)
+        //.authority(Some(&ctx.accounts.system_program))
+        .invoke()?;
+    Ok(())
+}
+
+// To be deprecated: chapters will be added as attributes than as assets
+pub fn _create_chapter_asset(ctx: Context<CreateChapterAsset>, chapter_index: u8) -> Result<()> {
     let mut plugins = vec![];
 
     plugins.push(PluginAuthorityPair {
@@ -83,6 +227,8 @@ pub struct CreateUserCollection<'info> {
     pub payer: Signer<'info>,
     #[account(mut)]
     pub collection: Signer<'info>,
+    #[account(mut)]
+    pub user_nft_asset: Signer<'info>,
     /// CHECK: This is the MPL Core program ID
     #[account(address = mpl_core::ID)]
     pub mpl_core_program: UncheckedAccount<'info>,
