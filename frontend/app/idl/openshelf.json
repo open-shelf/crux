@@ -1,5 +1,5 @@
 {
-  "address": "EAuy5RhimidaeNiW7S48FSbxnF16f2vhdLUuGqYBcoS7",
+  "address": "6Gazt3Ex9QxV4A34fjwUHArjJJZfH8vCM4caZgB2fA1G",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -159,9 +159,6 @@
           "writable": true
         },
         {
-          "name": "collection"
-        },
-        {
           "name": "mpl_core_program",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         },
@@ -251,15 +248,13 @@
           "writable": true
         },
         {
-          "name": "collection"
-        },
-        {
           "name": "mpl_core_program",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         },
         {
           "name": "book_nft",
-          "writable": true
+          "writable": true,
+          "signer": true
         },
         {
           "name": "platform",
@@ -302,9 +297,6 @@
         {
           "name": "author",
           "writable": true
-        },
-        {
-          "name": "collection"
         },
         {
           "name": "mpl_core_program",

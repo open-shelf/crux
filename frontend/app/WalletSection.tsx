@@ -227,7 +227,6 @@ const WalletSection: React.FC = () => {
         new PublicKey(bookPublicKey),
         new PublicKey(bookDetails.author),
         Number(purchaseChapterIndex),
-        bookNftAddress,
         collectionKey
       );
       console.log("Transaction signature", tx);
@@ -257,8 +256,7 @@ const WalletSection: React.FC = () => {
       const tx = await programUtils.purchaseFullBook(
         new PublicKey(bookPublicKey),
         bookDetails.author,
-        collectionKey,
-        bookNftAddress
+        collectionKey
       );
       console.log("Transaction signature", tx);
       await updateBookAndBalance();

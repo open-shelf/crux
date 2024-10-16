@@ -102,16 +102,16 @@ export class ProgramUtils {
     authorPubKey: PublicKey, 
     chapterIndex: number, 
     collectionKey: PublicKey,
-    bookNftAddress: PublicKey
   ): Promise<string> {
     console.log("Purchasing chapter with the following details:");
     console.log("Book Public Key:", bookPubKey.toString());
     console.log("Author Public Key:", authorPubKey.toString());
     console.log("Chapter Index:", chapterIndex);
     console.log("Collection Key:", collectionKey.toString());
-    console.log("Book NFT Address:", bookNftAddress.toString());
     console.log("Program ID:", this.program.programId.toString());
 
+    const bnft = anchor.web3.Keypair.generate();
+    console.log("book nft", bnft.publicKey.toString())
     try {
       const tx = await this.program.methods
         .purchaseChapter(chapterIndex)
@@ -119,12 +119,13 @@ export class ProgramUtils {
           book: bookPubKey,
           buyer: this.provider.wallet.publicKey,
           author: authorPubKey,
-          collection: collectionKey,
+          //collection: collectionKey,
           mplCoreProgram: MPL_CORE_PROGRAM_ID,
-          bookNft: bookNftAddress,
+          bookNft: bnft.publicKey,
           platform: new PublicKey("6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"),
           systemProgram: anchor.web3.SystemProgram.programId,
         })
+        .signers([bnft])
         .rpc();
       return tx;
     } catch (error) {
@@ -133,32 +134,39 @@ export class ProgramUtils {
     }
   }
 
-  async purchaseFullBook(bookPubKey: PublicKey, authorPubKey: PublicKey, collectionKey: PublicKey, bookNftAddress: PublicKey): Promise<string> {
+  async purchaseFullBook(bookPubKey: PublicKey, authorPubKey: PublicKey, collectionKey: PublicKey): Promise<string> {
+
+    const bnft = anchor.web3.Keypair.generate();
+    console.log("book nft", bnft.publicKey.toString())
+
     const tx = await this.program.methods
       .purchaseFullBook()
       .accounts({
         book: bookPubKey,
         buyer: this.provider.wallet.publicKey,
         author: authorPubKey,
-        collection: collectionKey,
+        //collection: collectionKey,
         mplCoreProgram: MPL_CORE_PROGRAM_ID,
-        bookNft: bookNftAddress,
+        bookNft: bnft.publicKey,
         platform: new PublicKey("6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"),
         systemProgram: anchor.web3.SystemProgram.programId,
       })
+      .signers([bnft])
       .rpc();
     return tx;
   }
 
   async createBookNFT(bookPubKey: PublicKey, authorPubKey: PublicKey, collectionKey: PublicKey): Promise<string> {
     const bnft = anchor.web3.Keypair.generate();
+    console.log("book nft", bnft.publicKey.toString())
+
     const tx = await this.program.methods
       .createBookAssetFullCtx()
       .accounts({
         book: bookPubKey,
         buyer: this.provider.wallet.publicKey,
         author: authorPubKey,
-        collection: collectionKey,
+        // collection: collectionKey,
         mplCoreProgram: MPL_CORE_PROGRAM_ID,
         bookNft: bnft.publicKey,
         platform: new PublicKey("6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"),

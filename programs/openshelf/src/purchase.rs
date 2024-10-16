@@ -177,8 +177,8 @@ pub struct PurchaseFullBook<'info> {
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub author: AccountInfo<'info>,
-    /// CHECK: This is used for reference
-    pub collection: AccountInfo<'info>,
+    // #[account(mut)]
+    // pub collection: AccountInfo<'info>,
     /// CHECK: This is the MPL Core program ID
     #[account(address = mpl_core::ID)]
     pub mpl_core_program: UncheckedAccount<'info>,
@@ -200,14 +200,40 @@ pub struct PurchaseChapter<'info> {
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub author: AccountInfo<'info>,
-    /// CHECK: This is used for reference
-    pub collection: AccountInfo<'info>,
+    // #[account(
+    //     mut,
+    //     constraint = collection.update_authority == buyer.key(),
+    // )]
+    // pub collection: Account<'info, BaseCollectionV1>,
     /// CHECK: This is the MPL Core program ID
     #[account(address = mpl_core::ID)]
     pub mpl_core_program: UncheckedAccount<'info>,
     /// CHECK: This is used for updating the NFT
     #[account(mut)]
-    pub book_nft: AccountInfo<'info>,
+    pub book_nft: Signer<'info>,
+    /// CHECK: This is safe because we're only transferring SOL to this account
+    #[account(mut)]
+    pub platform: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct PurchaseContext<'info> {
+    #[account(mut)]
+    pub book: Account<'info, Book>,
+    #[account(mut)]
+    pub buyer: Signer<'info>,
+    /// CHECK: This is safe because we're only transferring SOL to this account
+    #[account(mut)]
+    pub author: AccountInfo<'info>,
+    // #[account(mut)]
+    // pub collection: AccountInfo<'info>,
+    /// CHECK: This is the MPL Core program ID
+    #[account(address = mpl_core::ID)]
+    pub mpl_core_program: UncheckedAccount<'info>,
+    /// CHECK: This is used for updating the NFT
+    #[account(mut)]
+    pub book_nft: Signer<'info>,
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub platform: AccountInfo<'info>,

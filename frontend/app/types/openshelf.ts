@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/openshelf.json`.
  */
 export type Openshelf = {
-  "address": "EAuy5RhimidaeNiW7S48FSbxnF16f2vhdLUuGqYBcoS7",
+  "address": "6Gazt3Ex9QxV4A34fjwUHArjJJZfH8vCM4caZgB2fA1G",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -165,9 +165,6 @@ export type Openshelf = {
           "writable": true
         },
         {
-          "name": "collection"
-        },
-        {
           "name": "mplCoreProgram",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         },
@@ -257,15 +254,13 @@ export type Openshelf = {
           "writable": true
         },
         {
-          "name": "collection"
-        },
-        {
           "name": "mplCoreProgram",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         },
         {
           "name": "bookNft",
-          "writable": true
+          "writable": true,
+          "signer": true
         },
         {
           "name": "platform",
@@ -308,9 +303,6 @@ export type Openshelf = {
         {
           "name": "author",
           "writable": true
-        },
-        {
-          "name": "collection"
         },
         {
           "name": "mplCoreProgram",
