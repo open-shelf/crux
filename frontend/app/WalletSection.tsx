@@ -69,6 +69,7 @@ const WalletSection: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<number | null>(null);
   const [ownedNFTs, setOwnedNFTs] = useState<AssetV1[]>([]);
   const [selectedNFT, setSelectedNFT] = useState<number | null>(null);
+  const [bNFTA, setBookNftAddress] = useState<string>("");
 
   useEffect(() => {
     const initializeProgram = async () => {
@@ -219,19 +220,39 @@ const WalletSection: React.FC = () => {
     }
     try {
       console.log("Purchasing chapter...");
+      console.log(bNFTA);
       const bookNftAddress = new PublicKey(
         bookDetails.bookNftAddress || anchor.web3.Keypair.generate().publicKey
       );
+
       console.log(collectionPublicKey);
       const collectionKey = new PublicKey(collectionPublicKey);
-      const tx = await programUtils.purchaseChapter(
-        new PublicKey(bookPublicKey),
-        new PublicKey(bookDetails.author),
-        Number(purchaseChapterIndex),
-        collectionKey
-      );
+      let tx;
+      if (bNFTA != "") {
+        console.log("Purchasing with existing NFT!");
+        tx = await programUtils.purchaseChapterWithExistingNFT(
+          new PublicKey(bookPublicKey),
+          new PublicKey(bookDetails.author),
+          Number(purchaseChapterIndex),
+          collectionKey,
+          new PublicKey(bNFTA)
+        );
+      } else {
+        console.log("Purchasing with new NFT!");
+        tx = await programUtils.purchaseChapter(
+          new PublicKey(bookPublicKey),
+          new PublicKey(bookDetails.author),
+          Number(purchaseChapterIndex),
+          collectionKey
+        );
+      }
       console.log("Transaction signature", tx);
       await updateBookAndBalance();
+
+      // Update the bookNftAddress state if it's not already set
+      if (!bookNftAddress) {
+        setBookNftAddress(bookDetails.bookNftAddress);
+      }
     } catch (error: unknown) {
       console.error("Error purchasing chapter:", error);
       if (error instanceof Error) {
@@ -445,6 +466,7 @@ const WalletSection: React.FC = () => {
         return;
       }
       const assetsV1 = await programUtils.fetchCollection(pubKey);
+
       setCollectionAssets(assetsV1);
 
       // Fetch metadata for all assets
@@ -628,6 +650,13 @@ const WalletSection: React.FC = () => {
             value={purchaseChapterIndex}
             onChange={(e) => setPurchaseChapterIndex(e.target.value)}
             placeholder="Chapter Index"
+            className="input-field w-full mb-2"
+          />
+          <input
+            type="text"
+            value={bNFTA}
+            onChange={(e) => setBookNftAddress(e.target.value)}
+            placeholder="Book NFT Address (optional)"
             className="input-field w-full mb-2"
           />
           <button onClick={purchaseChapter} className="btn-primary w-full mb-2">

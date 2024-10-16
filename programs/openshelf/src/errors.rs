@@ -14,4 +14,6 @@ pub enum ProgramErrorCode {
     StakerNotFound,
     #[msg("No rewards to claim")]
     NoEarningsToClaim,
+    #[msg("No chapter attribute was found")]
+    NoChapterAttribute,
 }

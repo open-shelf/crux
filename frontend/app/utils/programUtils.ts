@@ -134,6 +134,42 @@ export class ProgramUtils {
     }
   }
 
+  async purchaseChapterWithExistingNFT(
+    bookPubKey: PublicKey, 
+    authorPubKey: PublicKey, 
+    chapterIndex: number, 
+    collectionKey: PublicKey,
+    bookNftAddress: PublicKey
+  ): Promise<string> {
+    console.log("Purchasing chapter with existing NFT:");
+    console.log("Book Public Key:", bookPubKey.toString());
+    console.log("Author Public Key:", authorPubKey.toString());
+    console.log("Chapter Index:", chapterIndex);
+    console.log("Collection Key:", collectionKey.toString());
+    console.log("Book NFT Address:", bookNftAddress.toString());
+    console.log("Program ID:", this.program.programId.toString());
+
+    try {
+      const tx = await this.program.methods
+        .purchaseChapterWithExistingNft(chapterIndex)
+        .accounts({
+          book: bookPubKey,
+          buyer: this.provider.wallet.publicKey,
+          author: authorPubKey,
+          collection: collectionKey,
+          mplCoreProgram: MPL_CORE_PROGRAM_ID,
+          bookNft: bookNftAddress,
+          platform: new PublicKey("6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"),
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc();
+      return tx;
+    } catch (error) {
+      console.error("Error in purchaseChapterWithExistingNFT:", error);
+      throw error;
+    }
+  }
+
   async purchaseFullBook(bookPubKey: PublicKey, authorPubKey: PublicKey, collectionKey: PublicKey): Promise<string> {
 
     const bnft = anchor.web3.Keypair.generate();
@@ -284,13 +320,13 @@ export class ProgramUtils {
 
     const collectionPublicKey = fromWeb3JsPublicKey(collectionId);
 
-    const assetsByOwner = await fetchAssetsByCollection(umi, collectionPublicKey, {
+    const assetsByCollection = await fetchAssetsByCollection(umi, collectionPublicKey, {
       skipDerivePlugins: false,
     })
     
-    console.log(assetsByOwner)
+    console.log("assetsByCollection", assetsByCollection)
 
-    return assetsByOwner;
+    return assetsByCollection;
   }
 
   async fetAllNFTByOwner(owner: PublicKey): Promise<AssetV1[]> {

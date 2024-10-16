@@ -1,14 +1,14 @@
 use anchor_lang::prelude::*;
 use mpl_core::{
-    accounts::BaseCollectionV1,
-    instructions::{AddPluginV1CpiBuilder, CreateCollectionV2CpiBuilder, CreateV2CpiBuilder},
+    accounts::{BaseAssetV1, BaseCollectionV1},
+    instructions::{CreateCollectionV2CpiBuilder, CreateV2CpiBuilder, UpdatePluginV1CpiBuilder},
     types::{
         Attribute, Attributes, PermanentFreezeDelegate, Plugin, PluginAuthority,
         PluginAuthorityPair,
     },
 };
 
-use crate::{state::Book, PurchaseContext};
+use crate::{errors::ProgramErrorCode, state::Book, PurchaseContext, PurchaseUpdateContext};
 
 pub enum PurchaseType {
     FullBookPurchase,
@@ -69,7 +69,7 @@ pub fn create_user_collection(ctx: Context<CreateUserCollection>) -> Result<()> 
 }
 
 pub fn create_book_asset(
-    ctx: Context<PurchaseContext>,
+    ctx: &Context<PurchaseContext>,
     purchase_type: PurchaseType,
     transaction_id: String,
 ) -> Result<()> {
@@ -80,23 +80,26 @@ pub fn create_book_asset(
         authority: None,
     });
 
-    let plugin = match purchase_type {
-        PurchaseType::FullBookPurchase => Plugin::Attributes(Attributes {
-            attribute_list: vec![Attribute {
-                key: "fully_purchased".to_string(),
-                value: transaction_id,
-            }],
+    let mut attribute_list: Vec<Attribute> = vec![];
+
+    attribute_list.push(Attribute {
+        key: "book_address".to_string(),
+        value: ctx.accounts.book.key().to_string(),
+    });
+
+    match purchase_type {
+        PurchaseType::FullBookPurchase => attribute_list.push(Attribute {
+            key: "fully_purchased".to_string(),
+            value: transaction_id,
         }),
-        PurchaseType::ChapterPurchase { chapter_index } => Plugin::Attributes(Attributes {
-            attribute_list: vec![Attribute {
-                key: chapter_index.to_string(),
-                value: transaction_id,
-            }],
+        PurchaseType::ChapterPurchase { chapter_index } => attribute_list.push(Attribute {
+            key: chapter_index.to_string(),
+            value: transaction_id,
         }),
     };
 
     plugins.push(PluginAuthorityPair {
-        plugin: plugin,
+        plugin: Plugin::Attributes(Attributes { attribute_list }),
         authority: Some(PluginAuthority::UpdateAuthority),
     });
 
@@ -116,21 +119,39 @@ pub fn create_book_asset(
     Ok(())
 }
 
+pub fn fetch_attrib_list(ctx: &Context<PurchaseUpdateContext>) -> Result<Vec<Attribute>> {
+    let (_, plugin, _) = mpl_core::fetch_plugin::<BaseAssetV1, Plugin>(
+        &ctx.accounts.book_nft,
+        mpl_core::types::PluginType::Attributes,
+    )?;
+
+    if let Plugin::Attributes(attributes) = plugin {
+        Ok(attributes.attribute_list)
+    } else {
+        Err(ProgramErrorCode::NoChapterAttribute.into())
+    }
+}
+
 pub fn update_attributes_plugin(
-    ctx: Context<PurchaseContext>,
+    ctx: &Context<PurchaseUpdateContext>,
     chapter_index: u8,
     transaction_id: String,
 ) -> Result<()> {
+    let mut attribute_list: Vec<Attribute> = Vec::new();
+
+    // Fetch existing attribute_list
+    attribute_list.extend(fetch_attrib_list(ctx)?);
+    attribute_list.push(Attribute {
+        key: chapter_index.to_string(),
+        value: transaction_id,
+    });
+
     let plugin = Plugin::Attributes(Attributes {
-        attribute_list: vec![Attribute {
-            key: chapter_index.to_string(),
-            value: transaction_id,
-        }],
+        attribute_list: attribute_list,
     });
 
     let collection_info = &ctx.accounts.collection.to_account_infos()[0];
-
-    AddPluginV1CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
+    UpdatePluginV1CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
         .asset(&ctx.accounts.book_nft)
         .plugin(plugin)
         .collection(Some(collection_info))

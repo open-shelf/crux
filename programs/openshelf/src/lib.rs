@@ -14,7 +14,7 @@ use nft::*;
 use purchase::*;
 use stake::*;
 
-declare_id!("GfNgYXDz7Vn51iBiyb8781Adgw4GcnceAWViuDj1zC89");
+declare_id!("2nL8bYp1CQQ8pDczs2bLr3Yspy5GUUUPAq3CVJhEP9v8");
 
 #[program]
 pub mod openshelf {
@@ -44,6 +44,13 @@ pub mod openshelf {
         purchase::purchase_chapter(ctx, chapter_index)
     }
 
+    pub fn purchase_chapter_with_existing_nft(
+        ctx: Context<PurchaseUpdateContext>,
+        chapter_index: u8,
+    ) -> Result<()> {
+        purchase::purchase_chapter_with_existing_nft(ctx, chapter_index)
+    }
+
     pub fn purchase_full_book(ctx: Context<PurchaseContext>) -> Result<()> {
         purchase::purchase_full_book(ctx)
     }
@@ -62,7 +69,7 @@ pub mod openshelf {
 
     pub fn create_book_asset_full_ctx(ctx: Context<PurchaseContext>) -> Result<()> {
         nft::create_book_asset(
-            ctx,
+            &ctx,
             PurchaseType::FullBookPurchase,
             "transaction_id".to_string(),
         )?;
