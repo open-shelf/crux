@@ -69,7 +69,6 @@ pub fn purchase_chapter(ctx: Context<PurchaseContext>, chapter_index: u8) -> Res
         .readers
         .push(buyer_key);
 
-    let transactionId = "".to_string(); // To be replaced by transaction Id
     let mut purchase_type = PurchaseType::ChapterPurchase {
         chapter_index: chapter_index,
     };
@@ -174,7 +173,7 @@ pub fn purchase_full_book(ctx: Context<PurchaseContext>) -> Result<()> {
 }
 
 #[derive(Accounts)]
-pub struct PurchaseFullBook<'info> {
+pub struct PurchaseContext<'info> {
     #[account(mut)]
     pub book: Account<'info, Book>,
     #[account(mut)]
@@ -182,8 +181,8 @@ pub struct PurchaseFullBook<'info> {
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub author: AccountInfo<'info>,
-    // #[account(mut)]
-    // pub collection: AccountInfo<'info>,
+    #[account(mut)]
+    pub collection: Account<'info, BaseCollectionV1>,
     /// CHECK: This is the MPL Core program ID
     #[account(address = mpl_core::ID)]
     pub mpl_core_program: UncheckedAccount<'info>,
@@ -197,7 +196,7 @@ pub struct PurchaseFullBook<'info> {
 }
 
 #[derive(Accounts)]
-pub struct PurchaseContext<'info> {
+pub struct PurchaseUpdateContext<'info> {
     #[account(mut)]
     pub book: Account<'info, Book>,
     #[account(mut)]
@@ -205,14 +204,14 @@ pub struct PurchaseContext<'info> {
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub author: AccountInfo<'info>,
-    // #[account(mut)]
-    // pub collection: AccountInfo<'info>,
+    #[account(mut)]
+    pub collection: Account<'info, BaseCollectionV1>,
     /// CHECK: This is the MPL Core program ID
     #[account(address = mpl_core::ID)]
     pub mpl_core_program: UncheckedAccount<'info>,
     /// CHECK: This is used for updating the NFT
     #[account(mut)]
-    pub book_nft: Signer<'info>,
+    pub book_nft: AccountInfo<'info>,
     /// CHECK: This is safe because we're only transferring SOL to this account
     #[account(mut)]
     pub platform: AccountInfo<'info>,

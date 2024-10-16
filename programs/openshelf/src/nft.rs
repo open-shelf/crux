@@ -103,7 +103,7 @@ pub fn create_book_asset(
     let book = &ctx.accounts.book;
     CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
         .asset(&ctx.accounts.book_nft.to_account_info())
-        // .collection(Some(&ctx.accounts.collection.to_account_info()))
+        .collection(Some(&ctx.accounts.collection.to_account_info()))
         .payer(&&ctx.accounts.buyer.to_account_info())
         .owner(Some(&ctx.accounts.buyer.to_account_info()))
         .system_program(&ctx.accounts.system_program.to_account_info())
@@ -128,10 +128,12 @@ pub fn update_attributes_plugin(
         }],
     });
 
+    let collection_info = &ctx.accounts.collection.to_account_infos()[0];
+
     AddPluginV1CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
         .asset(&ctx.accounts.book_nft)
         .plugin(plugin)
-        //.collection(Some(&ctx.accounts.collection))
+        .collection(Some(collection_info))
         .payer(&ctx.accounts.buyer)
         //.authority(Some(&ctx.accounts.system_program))
         .system_program(&ctx.accounts.system_program)

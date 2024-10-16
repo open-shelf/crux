@@ -5,10 +5,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-openshelf = "6Gazt3Ex9QxV4A34fjwUHArjJJZfH8vCM4caZgB2fA1G"
+openshelf = "GfNgYXDz7Vn51iBiyb8781Adgw4GcnceAWViuDj1zC89"
 
 [programs.localnet]
-openshelf = "6Gazt3Ex9QxV4A34fjwUHArjJJZfH8vCM4caZgB2fA1G"
+openshelf = "GfNgYXDz7Vn51iBiyb8781Adgw4GcnceAWViuDj1zC89"
 
 [registry]
 url = "https://api.apr.dev"

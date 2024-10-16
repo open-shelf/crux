@@ -14,7 +14,7 @@ use nft::*;
 use purchase::*;
 use stake::*;
 
-declare_id!("6Gazt3Ex9QxV4A34fjwUHArjJJZfH8vCM4caZgB2fA1G");
+declare_id!("GfNgYXDz7Vn51iBiyb8781Adgw4GcnceAWViuDj1zC89");
 
 #[program]
 pub mod openshelf {

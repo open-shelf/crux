@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/openshelf.json`.
  */
 export type Openshelf = {
-  "address": "6Gazt3Ex9QxV4A34fjwUHArjJJZfH8vCM4caZgB2fA1G",
+  "address": "GfNgYXDz7Vn51iBiyb8781Adgw4GcnceAWViuDj1zC89",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -165,6 +165,10 @@ export type Openshelf = {
           "writable": true
         },
         {
+          "name": "collection",
+          "writable": true
+        },
+        {
           "name": "mplCoreProgram",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         },
@@ -254,6 +258,10 @@ export type Openshelf = {
           "writable": true
         },
         {
+          "name": "collection",
+          "writable": true
+        },
+        {
           "name": "mplCoreProgram",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         },
@@ -302,6 +310,10 @@ export type Openshelf = {
         },
         {
           "name": "author",
+          "writable": true
+        },
+        {
+          "name": "collection",
           "writable": true
         },
         {
@@ -361,6 +373,19 @@ export type Openshelf = {
   ],
   "accounts": [
     {
+      "name": "baseCollectionV1",
+      "discriminator": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
       "name": "book",
       "discriminator": [
         121,
@@ -407,6 +432,42 @@ export type Openshelf = {
     }
   ],
   "types": [
+    {
+      "name": "baseCollectionV1",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "type": {
+              "defined": {
+                "name": "key"
+              }
+            }
+          },
+          {
+            "name": "updateAuthority",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "uri",
+            "type": "string"
+          },
+          {
+            "name": "numMinted",
+            "type": "u32"
+          },
+          {
+            "name": "currentSize",
+            "type": "u32"
+          }
+        ]
+      }
+    },
     {
       "name": "book",
       "type": {
@@ -491,6 +552,32 @@ export type Openshelf = {
             "type": {
               "vec": "pubkey"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "key",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "uninitialized"
+          },
+          {
+            "name": "assetV1"
+          },
+          {
+            "name": "hashedAssetV1"
+          },
+          {
+            "name": "pluginHeaderV1"
+          },
+          {
+            "name": "pluginRegistryV1"
+          },
+          {
+            "name": "collectionV1"
           }
         ]
       }

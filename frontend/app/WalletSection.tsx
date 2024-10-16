@@ -222,6 +222,7 @@ const WalletSection: React.FC = () => {
       const bookNftAddress = new PublicKey(
         bookDetails.bookNftAddress || anchor.web3.Keypair.generate().publicKey
       );
+      console.log(collectionPublicKey);
       const collectionKey = new PublicKey(collectionPublicKey);
       const tx = await programUtils.purchaseChapter(
         new PublicKey(bookPublicKey),
