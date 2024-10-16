@@ -1,22 +1,14 @@
-use anchor_lang::{
-    prelude::*,
-    solana_program::{program::invoke, system_program},
-};
+use anchor_lang::prelude::*;
 use mpl_core::{
-    accounts::{BaseAssetV1, BaseCollectionV1},
-    collection,
-    instructions::{
-        AddPluginV1CpiBuilder, CreateCollectionV2CpiBuilder, CreateV2CpiBuilder,
-        UpdatePluginV1Builder,
-    },
+    accounts::BaseCollectionV1,
+    instructions::{AddPluginV1CpiBuilder, CreateCollectionV2CpiBuilder, CreateV2CpiBuilder},
     types::{
         Attribute, Attributes, PermanentFreezeDelegate, Plugin, PluginAuthority,
         PluginAuthorityPair,
     },
-    Asset,
 };
 
-use crate::{state::Book, PurchaseChapter, PurchaseFullBook};
+use crate::{state::Book, PurchaseContext};
 
 pub enum PurchaseType {
     FullBookPurchase,
@@ -77,7 +69,7 @@ pub fn create_user_collection(ctx: Context<CreateUserCollection>) -> Result<()> 
 }
 
 pub fn create_book_asset(
-    ctx: Context<PurchaseChapter>,
+    ctx: Context<PurchaseContext>,
     purchase_type: PurchaseType,
     transaction_id: String,
 ) -> Result<()> {
@@ -124,55 +116,8 @@ pub fn create_book_asset(
     Ok(())
 }
 
-pub fn create_book_asset_full_ctx(
-    ctx: Context<PurchaseFullBook>,
-    purchase_type: PurchaseType,
-    transaction_id: String,
-) -> Result<()> {
-    let mut plugins = vec![];
-
-    plugins.push(PluginAuthorityPair {
-        plugin: Plugin::PermanentFreezeDelegate(PermanentFreezeDelegate { frozen: true }),
-        authority: None,
-    });
-
-    let plugin = match purchase_type {
-        PurchaseType::FullBookPurchase => Plugin::Attributes(Attributes {
-            attribute_list: vec![Attribute {
-                key: "fully_purchased".to_string(),
-                value: transaction_id,
-            }],
-        }),
-        PurchaseType::ChapterPurchase { chapter_index } => Plugin::Attributes(Attributes {
-            attribute_list: vec![Attribute {
-                key: chapter_index.to_string(),
-                value: transaction_id,
-            }],
-        }),
-    };
-
-    plugins.push(PluginAuthorityPair {
-        plugin: plugin,
-        authority: None,
-    });
-
-    let book = &ctx.accounts.book;
-    CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
-        .asset(&ctx.accounts.book_nft.to_account_info())
-        // .collection(Some(&ctx.accounts.collection.to_account_info()))
-        .payer(&ctx.accounts.buyer.to_account_info())
-        .owner(Some(&ctx.accounts.buyer.to_account_info()))
-        .system_program(&ctx.accounts.system_program.to_account_info())
-        .name(book.title.clone())
-        .uri(book.metadata.image_url.to_string())
-        .plugins(plugins)
-        .invoke()?;
-
-    Ok(())
-}
-
 pub fn update_attributes_plugin(
-    ctx: Context<PurchaseChapter>,
+    ctx: Context<PurchaseContext>,
     chapter_index: u8,
     transaction_id: String,
 ) -> Result<()> {
@@ -189,6 +134,7 @@ pub fn update_attributes_plugin(
         //.collection(Some(&ctx.accounts.collection))
         .payer(&ctx.accounts.buyer)
         //.authority(Some(&ctx.accounts.system_program))
+        .system_program(&ctx.accounts.system_program)
         .invoke()?;
     Ok(())
 }

@@ -5,7 +5,7 @@ use crate::PurchaseType;
 use anchor_lang::prelude::*;
 use mpl_core::accounts::BaseCollectionV1;
 
-pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Result<()> {
+pub fn purchase_chapter(ctx: Context<PurchaseContext>, chapter_index: u8) -> Result<()> {
     let book = &mut ctx.accounts.book;
     let buyer_key = *ctx.accounts.buyer.key;
 
@@ -86,7 +86,7 @@ pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Res
 
     let transaction_id = "".to_string();
     // Check if book NFT exists already
-    if check_book_nft_exists(&ctx.accounts.book_nft) {
+    if check_book_nft_exists(&ctx.accounts.book_nft)? {
         nft::update_attributes_plugin(ctx, chapter_index, transaction_id)?;
     } else {
         nft::create_book_asset(ctx, purchase_type, transaction_id.clone())?;
@@ -95,11 +95,16 @@ pub fn purchase_chapter(ctx: Context<PurchaseChapter>, chapter_index: u8) -> Res
     Ok(())
 }
 
-fn check_book_nft_exists(book_nft: &AccountInfo) -> bool {
-    book_nft.data_is_empty()
+fn check_book_nft_exists(book_nft: &AccountInfo) -> Result<bool> {
+    Ok(if **book_nft.try_borrow_lamports()? > 0 {
+        msg!("This account has been initialized");
+        true
+    } else {
+        false
+    })
 }
 
-pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
+pub fn purchase_full_book(ctx: Context<PurchaseContext>) -> Result<()> {
     let buyer_key = *ctx.accounts.buyer.key;
 
     // Check if the buyer has already purchased the book
@@ -163,7 +168,7 @@ pub fn purchase_full_book(ctx: Context<PurchaseFullBook>) -> Result<()> {
     }
 
     let transaction_id = "".to_string();
-    nft::create_book_asset_full_ctx(ctx, PurchaseType::FullBookPurchase, transaction_id.clone())?;
+    nft::create_book_asset(ctx, PurchaseType::FullBookPurchase, transaction_id.clone())?;
 
     Ok(())
 }
@@ -179,32 +184,6 @@ pub struct PurchaseFullBook<'info> {
     pub author: AccountInfo<'info>,
     // #[account(mut)]
     // pub collection: AccountInfo<'info>,
-    /// CHECK: This is the MPL Core program ID
-    #[account(address = mpl_core::ID)]
-    pub mpl_core_program: UncheckedAccount<'info>,
-    /// CHECK: This is used for updating the NFT
-    #[account(mut)]
-    pub book_nft: Signer<'info>,
-    /// CHECK: This is safe because we're only transferring SOL to this account
-    #[account(mut)]
-    pub platform: AccountInfo<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct PurchaseChapter<'info> {
-    #[account(mut)]
-    pub book: Account<'info, Book>,
-    #[account(mut)]
-    pub buyer: Signer<'info>,
-    /// CHECK: This is safe because we're only transferring SOL to this account
-    #[account(mut)]
-    pub author: AccountInfo<'info>,
-    // #[account(
-    //     mut,
-    //     constraint = collection.update_authority == buyer.key(),
-    // )]
-    // pub collection: Account<'info, BaseCollectionV1>,
     /// CHECK: This is the MPL Core program ID
     #[account(address = mpl_core::ID)]
     pub mpl_core_program: UncheckedAccount<'info>,
