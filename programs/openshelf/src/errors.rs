@@ -16,4 +16,6 @@ pub enum ProgramErrorCode {
     NoEarningsToClaim,
     #[msg("No chapter attribute was found")]
     NoChapterAttribute,
+    #[msg("NO context was found in ContextWrapper")]
+    InvalidContextError,
 }

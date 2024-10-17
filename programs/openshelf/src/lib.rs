@@ -55,6 +55,10 @@ pub mod openshelf {
         purchase::purchase_full_book(ctx)
     }
 
+    pub fn purchase_full_book_with_existing_nft(ctx: Context<PurchaseUpdateContext>) -> Result<()> {
+        purchase::purchase_full_book_with_existing_nft(ctx)
+    }
+
     pub fn stake_on_book(ctx: Context<StakeOnBook>, amount: u64) -> Result<()> {
         stake::stake_on_book(ctx, amount)
     }

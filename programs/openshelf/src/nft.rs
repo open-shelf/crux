@@ -6,6 +6,7 @@ use mpl_core::{
         Attribute, Attributes, PermanentFreezeDelegate, Plugin, PluginAuthority,
         PluginAuthorityPair,
     },
+    Asset,
 };
 
 use crate::{errors::ProgramErrorCode, state::Book, PurchaseContext, PurchaseUpdateContext};
@@ -120,7 +121,7 @@ pub fn create_book_asset(
 }
 
 pub fn fetch_attrib_list(ctx: &Context<PurchaseUpdateContext>) -> Result<Vec<Attribute>> {
-    let (_, plugin, _) = mpl_core::fetch_plugin::<BaseAssetV1, Plugin>(
+    let (_, plugin, _) = mpl_core::fetch_asset_plugin::<Plugin>(
         &ctx.accounts.book_nft,
         mpl_core::types::PluginType::Attributes,
     )?;
@@ -134,17 +135,23 @@ pub fn fetch_attrib_list(ctx: &Context<PurchaseUpdateContext>) -> Result<Vec<Att
 
 pub fn update_attributes_plugin(
     ctx: &Context<PurchaseUpdateContext>,
-    chapter_index: u8,
+    purchase_type: PurchaseType,
     transaction_id: String,
 ) -> Result<()> {
     let mut attribute_list: Vec<Attribute> = Vec::new();
 
+    match purchase_type {
+        PurchaseType::FullBookPurchase => attribute_list.push(Attribute {
+            key: "fully_purchased".to_string(),
+            value: transaction_id,
+        }),
+        PurchaseType::ChapterPurchase { chapter_index } => attribute_list.push(Attribute {
+            key: chapter_index.to_string(),
+            value: transaction_id,
+        }),
+    }
     // Fetch existing attribute_list
     attribute_list.extend(fetch_attrib_list(ctx)?);
-    attribute_list.push(Attribute {
-        key: chapter_index.to_string(),
-        value: transaction_id,
-    });
 
     let plugin = Plugin::Attributes(Attributes {
         attribute_list: attribute_list,
@@ -159,33 +166,6 @@ pub fn update_attributes_plugin(
         //.authority(Some(&ctx.accounts.system_program))
         .system_program(&ctx.accounts.system_program)
         .invoke()?;
-    Ok(())
-}
-
-// To be deprecated: chapters will be added as attributes than as assets
-pub fn _create_chapter_asset(ctx: Context<CreateChapterAsset>, chapter_index: u8) -> Result<()> {
-    let mut plugins = vec![];
-
-    plugins.push(PluginAuthorityPair {
-        plugin: Plugin::PermanentFreezeDelegate(PermanentFreezeDelegate { frozen: true }),
-        authority: None,
-    });
-
-    let book = &ctx.accounts.book;
-
-    let asset_name = format!("{}:{}", book.title, chapter_index);
-
-    CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
-        .asset(&ctx.accounts.asset.to_account_info())
-        .collection(Some(&ctx.accounts.collection.to_account_info()))
-        .payer(&ctx.accounts.payer.to_account_info())
-        .owner(Some(&ctx.accounts.payer.to_account_info()))
-        .system_program(&ctx.accounts.system_program.to_account_info())
-        .name(asset_name)
-        .uri("http://localhost:8000/chapterNFT/".to_string())
-        .plugins(plugins)
-        .invoke()?;
-
     Ok(())
 }
 
