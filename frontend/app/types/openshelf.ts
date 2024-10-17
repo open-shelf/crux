@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/openshelf.json`.
  */
 export type Openshelf = {
-  "address": "2nL8bYp1CQQ8pDczs2bLr3Yspy5GUUUPAq3CVJhEP9v8",
+  "address": "7LPXnLBKNzpwhqfwfeaXVK4airqY5r3n2L4kabfZPAms",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -283,6 +283,10 @@ export type Openshelf = {
         {
           "name": "chapterIndex",
           "type": "u8"
+        },
+        {
+          "name": "needNft",
+          "type": "bool"
         }
       ]
     },
@@ -337,6 +341,10 @@ export type Openshelf = {
         {
           "name": "chapterIndex",
           "type": "u8"
+        },
+        {
+          "name": "needNft",
+          "type": "bool"
         }
       ]
     },
@@ -388,7 +396,66 @@ export type Openshelf = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "needNft",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "purchaseFullBookWithExistingNft",
+      "discriminator": [
+        212,
+        77,
+        238,
+        38,
+        13,
+        34,
+        173,
+        162
+      ],
+      "accounts": [
+        {
+          "name": "book",
+          "writable": true
+        },
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "author",
+          "writable": true
+        },
+        {
+          "name": "collection",
+          "writable": true
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "bookNft",
+          "writable": true
+        },
+        {
+          "name": "platform",
+          "writable": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "needNft",
+          "type": "bool"
+        }
+      ]
     },
     {
       "name": "stakeOnBook",
@@ -488,6 +555,11 @@ export type Openshelf = {
       "code": 6006,
       "name": "noChapterAttribute",
       "msg": "No chapter attribute was found"
+    },
+    {
+      "code": 6007,
+      "name": "invalidContextError",
+      "msg": "NO context was found in ContextWrapper"
     }
   ],
   "types": [

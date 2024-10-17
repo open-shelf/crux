@@ -1,93 +1,159 @@
 use crate::errors::*;
 use crate::nft;
-use crate::purchase;
 use crate::state::*;
 use crate::PurchaseType;
 use anchor_lang::prelude::*;
 use mpl_core::accounts::BaseCollectionV1;
 
-pub fn purchase_chapter(ctx: Context<PurchaseContext>, chapter_index: u8) -> Result<()> {
-    let book = &mut ctx.accounts.book;
-    let buyer_key = *ctx.accounts.buyer.key;
-
-    require!(
-        chapter_index < book.chapters.len() as u8,
-        ProgramErrorCode::InvalidChapterIndex
-    );
-    require!(
-        !book.chapters[chapter_index as usize]
-            .readers
-            .contains(&buyer_key),
-        ProgramErrorCode::AlreadyPurchased
-    );
-
-    let price = book.chapters[chapter_index as usize].price;
-    let author_share = price * 70 / 100; // 70% to author
-    let stakers_share = price * 20 / 100; // 20% to stakers
-    let platform_share = price * 10 / 100; // 10% to platform
-
-    // Transfer author's share
-    let cpi_context = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
-        anchor_lang::system_program::Transfer {
-            from: ctx.accounts.buyer.to_account_info(),
-            to: ctx.accounts.author.to_account_info(),
-        },
-    );
-    anchor_lang::system_program::transfer(cpi_context, author_share)?;
-
-    // Transfer platform's share
-    let cpi_context = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
-        anchor_lang::system_program::Transfer {
-            from: ctx.accounts.buyer.to_account_info(),
-            to: ctx.accounts.platform.to_account_info(),
-        },
-    );
-    anchor_lang::system_program::transfer(cpi_context, platform_share)?;
-
-    // Handle stakers' share
-    if book.total_stake > 0 {
-        let total_stake = book.total_stake;
-        for stake in &mut book.stakes {
-            let staker_share =
-                (stake.amount as u128 * stakers_share as u128 / total_stake as u128) as u64;
-            stake.earnings += staker_share;
-        }
-
-        // Transfer stakers' share to the book account
-        let cpi_context = CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            anchor_lang::system_program::Transfer {
-                from: ctx.accounts.buyer.to_account_info(),
-                to: book.to_account_info(),
-            },
+fn validate_purchase(book: &Book, buyer_key: &Pubkey, chapter_index: Option<u8>) -> Result<()> {
+    if let Some(index) = chapter_index {
+        require!(
+            index < book.chapters.len() as u8,
+            ProgramErrorCode::InvalidChapterIndex
         );
-        anchor_lang::system_program::transfer(cpi_context, stakers_share)?;
+        require!(
+            !book.chapters[index as usize].readers.contains(buyer_key),
+            ProgramErrorCode::AlreadyPurchased
+        );
+    } else {
+        require!(
+            !book.readers.contains(buyer_key),
+            ProgramErrorCode::AlreadyPurchased
+        );
+    }
+    Ok(())
+}
+
+fn calculate_shares(book: &Book, chapter_index: Option<u8>) -> (u64, u64, u64, u64) {
+    let price = if let Some(index) = chapter_index {
+        book.chapters[index as usize].price
+    } else {
+        book.full_book_price
+    };
+    let author_share = price * 70 / 100;
+    let stakers_share = price * 20 / 100;
+    let platform_share = price * 10 / 100;
+    (price, author_share, stakers_share, platform_share)
+}
+
+fn update_book_state(book: &mut Book, buyer_key: &Pubkey, chapter_index: Option<u8>) {
+    if let Some(index) = chapter_index {
+        book.chapters[index as usize].readers.push(*buyer_key);
+    } else {
+        book.readers.push(*buyer_key);
+        for chapter in &mut book.chapters {
+            if !chapter.readers.contains(buyer_key) {
+                chapter.readers.push(*buyer_key);
+            }
+        }
     }
 
-    book.chapters[chapter_index as usize]
-        .readers
-        .push(buyer_key);
-
-    let mut purchase_type = PurchaseType::ChapterPurchase {
-        chapter_index: chapter_index,
-    };
-
-    // Check if the buyer has purchased all chapters
     if book
         .chapters
         .iter()
-        .all(|chapter| chapter.readers.contains(&buyer_key))
+        .all(|chapter| chapter.readers.contains(buyer_key))
     {
-        book.readers.push(buyer_key);
-        purchase_type = PurchaseType::FullBookPurchase;
+        book.readers.push(*buyer_key);
+    }
+}
+
+fn determine_purchase_type(
+    book: &Book,
+    buyer_key: &Pubkey,
+    chapter_index: Option<u8>,
+) -> PurchaseType {
+    if let Some(index) = chapter_index {
+        if book
+            .chapters
+            .iter()
+            .all(|chapter| chapter.readers.contains(buyer_key))
+        {
+            PurchaseType::FullBookPurchase
+        } else {
+            PurchaseType::ChapterPurchase {
+                chapter_index: index,
+            }
+        }
+    } else {
+        PurchaseType::FullBookPurchase
+    }
+}
+
+fn transfer_sol<'info>(
+    from: &Signer<'info>,
+    to: &AccountInfo<'info>,
+    amount: u64,
+    system_program: &Program<'info, System>,
+) -> Result<()> {
+    let cpi_context = CpiContext::new(
+        system_program.to_account_info(),
+        anchor_lang::system_program::Transfer {
+            from: from.to_account_info(),
+            to: to.to_account_info(),
+        },
+    );
+    anchor_lang::system_program::transfer(cpi_context, amount)
+}
+
+fn distribute_stakers_share(book: &mut Book, stakers_share: u64) {
+    let total_stake = book.total_stake;
+    for stake in &mut book.stakes {
+        let staker_share =
+            (stake.amount as u128 * stakers_share as u128 / total_stake as u128) as u64;
+        stake.earnings += staker_share;
+    }
+}
+
+pub fn purchase_chapter(
+    ctx: Context<PurchaseContext>,
+    chapter_index: u8,
+    need_nft: bool,
+) -> Result<()> {
+    let book = &mut ctx.accounts.book;
+    let buyer_key = *ctx.accounts.buyer.key;
+
+    validate_purchase(book, &buyer_key, Some(chapter_index))?;
+
+    let (_price, author_share, stakers_share, platform_share) =
+        calculate_shares(book, Some(chapter_index));
+
+    // Transfer author's share
+    transfer_sol(
+        &ctx.accounts.buyer,
+        &ctx.accounts.author,
+        author_share,
+        &ctx.accounts.system_program,
+    )?;
+
+    // Transfer platform's share
+    transfer_sol(
+        &ctx.accounts.buyer,
+        &ctx.accounts.platform,
+        platform_share,
+        &ctx.accounts.system_program,
+    )?;
+
+    // Handle stakers' share
+    if book.total_stake > 0 {
+        distribute_stakers_share(book, stakers_share);
+        transfer_sol(
+            &ctx.accounts.buyer,
+            &book.to_account_info(),
+            stakers_share,
+            &ctx.accounts.system_program,
+        )?;
     }
 
-    let transaction_id = "".to_string();
-    // Check if book NFT exists already
-    if !check_book_nft_exists(&ctx.accounts.book_nft)? {
-        nft::create_book_asset(&ctx, purchase_type, transaction_id.clone())?;
+    update_book_state(book, &buyer_key, Some(chapter_index));
+
+    let purchase_type = determine_purchase_type(book, &buyer_key, Some(chapter_index));
+
+    if need_nft {
+        let transaction_id = "".to_string();
+        // Check if book NFT exists already
+        if !check_book_nft_exists(&ctx.accounts.book_nft)? {
+            nft::create_book_asset(&ctx, purchase_type, transaction_id.clone())?;
+        }
     }
 
     Ok(())
@@ -96,88 +162,53 @@ pub fn purchase_chapter(ctx: Context<PurchaseContext>, chapter_index: u8) -> Res
 pub fn purchase_chapter_with_existing_nft(
     ctx: Context<PurchaseUpdateContext>,
     chapter_index: u8,
+    need_nft: bool,
 ) -> Result<()> {
     let book = &mut ctx.accounts.book;
     let buyer_key = *ctx.accounts.buyer.key;
 
-    require!(
-        chapter_index < book.chapters.len() as u8,
-        ProgramErrorCode::InvalidChapterIndex
-    );
-    require!(
-        !book.chapters[chapter_index as usize]
-            .readers
-            .contains(&buyer_key),
-        ProgramErrorCode::AlreadyPurchased
-    );
+    validate_purchase(book, &buyer_key, Some(chapter_index))?;
 
-    let price = book.chapters[chapter_index as usize].price;
-    let author_share = price * 70 / 100; // 70% to author
-    let stakers_share = price * 20 / 100; // 20% to stakers
-    let platform_share = price * 10 / 100; // 10% to platform
+    let (_price, author_share, stakers_share, platform_share) =
+        calculate_shares(book, Some(chapter_index));
 
     // Transfer author's share
-    let cpi_context = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
-        anchor_lang::system_program::Transfer {
-            from: ctx.accounts.buyer.to_account_info(),
-            to: ctx.accounts.author.to_account_info(),
-        },
-    );
-    anchor_lang::system_program::transfer(cpi_context, author_share)?;
+    transfer_sol(
+        &ctx.accounts.buyer,
+        &ctx.accounts.author,
+        author_share,
+        &ctx.accounts.system_program,
+    )?;
 
     // Transfer platform's share
-    let cpi_context = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
-        anchor_lang::system_program::Transfer {
-            from: ctx.accounts.buyer.to_account_info(),
-            to: ctx.accounts.platform.to_account_info(),
-        },
-    );
-    anchor_lang::system_program::transfer(cpi_context, platform_share)?;
+    transfer_sol(
+        &ctx.accounts.buyer,
+        &ctx.accounts.platform,
+        platform_share,
+        &ctx.accounts.system_program,
+    )?;
 
     // Handle stakers' share
     if book.total_stake > 0 {
-        let total_stake = book.total_stake;
-        for stake in &mut book.stakes {
-            let staker_share =
-                (stake.amount as u128 * stakers_share as u128 / total_stake as u128) as u64;
-            stake.earnings += staker_share;
+        distribute_stakers_share(book, stakers_share);
+        transfer_sol(
+            &ctx.accounts.buyer,
+            &book.to_account_info(),
+            stakers_share,
+            &ctx.accounts.system_program,
+        )?;
+    }
+
+    update_book_state(book, &buyer_key, Some(chapter_index));
+
+    let purchase_type = determine_purchase_type(book, &buyer_key, Some(chapter_index));
+
+    if need_nft {
+        let transaction_id = "".to_string();
+        // Check if book NFT exists already
+        if check_book_nft_exists(&ctx.accounts.book_nft)? {
+            nft::update_attributes_plugin(&ctx, purchase_type, transaction_id)?;
         }
-
-        // Transfer stakers' share to the book account
-        let cpi_context = CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            anchor_lang::system_program::Transfer {
-                from: ctx.accounts.buyer.to_account_info(),
-                to: book.to_account_info(),
-            },
-        );
-        anchor_lang::system_program::transfer(cpi_context, stakers_share)?;
-    }
-
-    book.chapters[chapter_index as usize]
-        .readers
-        .push(buyer_key);
-
-    let mut purchase_type = PurchaseType::ChapterPurchase {
-        chapter_index: chapter_index,
-    };
-
-    // Check if the buyer has purchased all chapters
-    if book
-        .chapters
-        .iter()
-        .all(|chapter| chapter.readers.contains(&buyer_key))
-    {
-        book.readers.push(buyer_key);
-        purchase_type = PurchaseType::FullBookPurchase;
-    }
-
-    let transaction_id = "".to_string();
-    // Check if book NFT exists already
-    if check_book_nft_exists(&ctx.accounts.book_nft)? {
-        nft::update_attributes_plugin(&ctx, purchase_type, transaction_id)?;
     }
 
     Ok(())
@@ -192,142 +223,96 @@ fn check_book_nft_exists(book_nft: &AccountInfo) -> Result<bool> {
     })
 }
 
-pub fn purchase_full_book(ctx: Context<PurchaseContext>) -> Result<()> {
+pub fn purchase_full_book(ctx: Context<PurchaseContext>, need_nft: bool) -> Result<()> {
+    let book = &mut ctx.accounts.book;
     let buyer_key = *ctx.accounts.buyer.key;
 
-    // Check if the buyer has already purchased the book
-    require!(
-        !ctx.accounts.book.readers.contains(&buyer_key),
-        ProgramErrorCode::AlreadyPurchased
-    );
+    validate_purchase(book, &buyer_key, None)?;
 
-    let price = ctx.accounts.book.full_book_price;
-    let author_share = price * 70 / 100; // 70% to author
-    let stakers_share = price * 20 / 100; // 20% to stakers
-    let platform_share = price * 10 / 100; // 10% to platform
+    let (_price, author_share, stakers_share, platform_share) = calculate_shares(book, None);
 
     // Transfer author's share
-    let cpi_context = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
-        anchor_lang::system_program::Transfer {
-            from: ctx.accounts.buyer.to_account_info(),
-            to: ctx.accounts.author.to_account_info(),
-        },
-    );
-    anchor_lang::system_program::transfer(cpi_context, author_share)?;
+    transfer_sol(
+        &ctx.accounts.buyer,
+        &ctx.accounts.author,
+        author_share,
+        &ctx.accounts.system_program,
+    )?;
 
     // Transfer platform's share
-    let cpi_context = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
-        anchor_lang::system_program::Transfer {
-            from: ctx.accounts.buyer.to_account_info(),
-            to: ctx.accounts.platform.to_account_info(),
-        },
-    );
-    anchor_lang::system_program::transfer(cpi_context, platform_share)?;
-
-    let book = &mut ctx.accounts.book;
+    transfer_sol(
+        &ctx.accounts.buyer,
+        &ctx.accounts.platform,
+        platform_share,
+        &ctx.accounts.system_program,
+    )?;
 
     // Handle stakers' share
     if book.total_stake > 0 {
-        let total_stake = book.total_stake;
-        for stake in &mut book.stakes {
-            let staker_share =
-                (stake.amount as u128 * stakers_share as u128 / total_stake as u128) as u64;
-            stake.earnings += staker_share;
-        }
-
-        // Transfer stakers' share to the book account
-        let cpi_context = CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            anchor_lang::system_program::Transfer {
-                from: ctx.accounts.buyer.to_account_info(),
-                to: book.to_account_info(),
-            },
-        );
-        anchor_lang::system_program::transfer(cpi_context, stakers_share)?;
+        distribute_stakers_share(book, stakers_share);
+        transfer_sol(
+            &ctx.accounts.buyer,
+            &book.to_account_info(),
+            stakers_share,
+            &ctx.accounts.system_program,
+        )?;
     }
 
-    book.readers.push(buyer_key);
-    for chapter in book.chapters.iter_mut() {
-        if !chapter.readers.contains(&buyer_key) {
-            chapter.readers.push(buyer_key);
-        }
+    update_book_state(book, &buyer_key, None);
+
+    if need_nft {
+        let transaction_id = "".to_string();
+        nft::create_book_asset(&ctx, PurchaseType::FullBookPurchase, transaction_id.clone())?;
     }
-
-    let transaction_id = "".to_string();
-    nft::create_book_asset(&ctx, PurchaseType::FullBookPurchase, transaction_id.clone())?;
-
     Ok(())
 }
 
-pub fn purchase_full_book_with_existing_nft(ctx: Context<PurchaseUpdateContext>) -> Result<()> {
+pub fn purchase_full_book_with_existing_nft(
+    ctx: Context<PurchaseUpdateContext>,
+    need_nft: bool,
+) -> Result<()> {
+    let book = &mut ctx.accounts.book;
     let buyer_key = *ctx.accounts.buyer.key;
 
-    // Check if the buyer has already purchased the book
-    require!(
-        !ctx.accounts.book.readers.contains(&buyer_key),
-        ProgramErrorCode::AlreadyPurchased
-    );
+    validate_purchase(book, &buyer_key, None)?;
 
-    let price = ctx.accounts.book.full_book_price;
-    let author_share = price * 70 / 100; // 70% to author
-    let stakers_share = price * 20 / 100; // 20% to stakers
-    let platform_share = price * 10 / 100; // 10% to platform
+    let (_price, author_share, stakers_share, platform_share) = calculate_shares(book, None);
 
     // Transfer author's share
-    let cpi_context = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
-        anchor_lang::system_program::Transfer {
-            from: ctx.accounts.buyer.to_account_info(),
-            to: ctx.accounts.author.to_account_info(),
-        },
-    );
-    anchor_lang::system_program::transfer(cpi_context, author_share)?;
+    transfer_sol(
+        &ctx.accounts.buyer,
+        &ctx.accounts.author,
+        author_share,
+        &ctx.accounts.system_program,
+    )?;
 
     // Transfer platform's share
-    let cpi_context = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
-        anchor_lang::system_program::Transfer {
-            from: ctx.accounts.buyer.to_account_info(),
-            to: ctx.accounts.platform.to_account_info(),
-        },
-    );
-    anchor_lang::system_program::transfer(cpi_context, platform_share)?;
-
-    let book = &mut ctx.accounts.book;
+    transfer_sol(
+        &ctx.accounts.buyer,
+        &ctx.accounts.platform,
+        platform_share,
+        &ctx.accounts.system_program,
+    )?;
 
     // Handle stakers' share
     if book.total_stake > 0 {
-        let total_stake = book.total_stake;
-        for stake in &mut book.stakes {
-            let staker_share =
-                (stake.amount as u128 * stakers_share as u128 / total_stake as u128) as u64;
-            stake.earnings += staker_share;
-        }
-
-        // Transfer stakers' share to the book account
-        let cpi_context = CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            anchor_lang::system_program::Transfer {
-                from: ctx.accounts.buyer.to_account_info(),
-                to: book.to_account_info(),
-            },
-        );
-        anchor_lang::system_program::transfer(cpi_context, stakers_share)?;
+        distribute_stakers_share(book, stakers_share);
+        transfer_sol(
+            &ctx.accounts.buyer,
+            &book.to_account_info(),
+            stakers_share,
+            &ctx.accounts.system_program,
+        )?;
     }
 
-    book.readers.push(buyer_key);
-    for chapter in book.chapters.iter_mut() {
-        if !chapter.readers.contains(&buyer_key) {
-            chapter.readers.push(buyer_key);
-        }
-    }
+    update_book_state(book, &buyer_key, None);
 
-    let transaction_id = "".to_string();
-    // Check if book NFT exists already
-    if check_book_nft_exists(&ctx.accounts.book_nft)? {
-        nft::update_attributes_plugin(&ctx, PurchaseType::FullBookPurchase, transaction_id)?;
+    if need_nft {
+        let transaction_id = "".to_string();
+        // Check if book NFT exists already
+        if check_book_nft_exists(&ctx.accounts.book_nft)? {
+            nft::update_attributes_plugin(&ctx, PurchaseType::FullBookPurchase, transaction_id)?;
+        }
     }
 
     Ok(())
@@ -354,12 +339,6 @@ pub struct PurchaseContext<'info> {
     #[account(mut)]
     pub platform: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
-}
-
-pub struct PurchaseContextWrapper<'info> {
-    pub is_update_context: bool,
-    pub purchase_context: Option<PurchaseContext<'info>>,
-    pub purchase_update_context: Option<PurchaseUpdateContext<'info>>,
 }
 
 #[derive(Accounts)]

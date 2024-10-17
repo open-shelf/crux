@@ -14,7 +14,7 @@ use nft::*;
 use purchase::*;
 use stake::*;
 
-declare_id!("2nL8bYp1CQQ8pDczs2bLr3Yspy5GUUUPAq3CVJhEP9v8");
+declare_id!("7LPXnLBKNzpwhqfwfeaXVK4airqY5r3n2L4kabfZPAms");
 
 #[program]
 pub mod openshelf {
@@ -40,23 +40,31 @@ pub mod openshelf {
         chapter::add_chapter(ctx, chapter_url, chapter_index, price, name)
     }
 
-    pub fn purchase_chapter(ctx: Context<PurchaseContext>, chapter_index: u8) -> Result<()> {
-        purchase::purchase_chapter(ctx, chapter_index)
+    pub fn purchase_chapter(
+        ctx: Context<PurchaseContext>,
+        chapter_index: u8,
+        need_nft: bool,
+    ) -> Result<()> {
+        purchase::purchase_chapter(ctx, chapter_index, need_nft)
     }
 
     pub fn purchase_chapter_with_existing_nft(
         ctx: Context<PurchaseUpdateContext>,
         chapter_index: u8,
+        need_nft: bool,
     ) -> Result<()> {
-        purchase::purchase_chapter_with_existing_nft(ctx, chapter_index)
+        purchase::purchase_chapter_with_existing_nft(ctx, chapter_index, need_nft)
     }
 
-    pub fn purchase_full_book(ctx: Context<PurchaseContext>) -> Result<()> {
-        purchase::purchase_full_book(ctx)
+    pub fn purchase_full_book(ctx: Context<PurchaseContext>, need_nft: bool) -> Result<()> {
+        purchase::purchase_full_book(ctx, need_nft)
     }
 
-    pub fn purchase_full_book_with_existing_nft(ctx: Context<PurchaseUpdateContext>) -> Result<()> {
-        purchase::purchase_full_book_with_existing_nft(ctx)
+    pub fn purchase_full_book_with_existing_nft(
+        ctx: Context<PurchaseUpdateContext>,
+        need_nft: bool,
+    ) -> Result<()> {
+        purchase::purchase_full_book_with_existing_nft(ctx, need_nft)
     }
 
     pub fn stake_on_book(ctx: Context<StakeOnBook>, amount: u64) -> Result<()> {

@@ -1,5 +1,5 @@
 {
-  "address": "2nL8bYp1CQQ8pDczs2bLr3Yspy5GUUUPAq3CVJhEP9v8",
+  "address": "7LPXnLBKNzpwhqfwfeaXVK4airqY5r3n2L4kabfZPAms",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -277,6 +277,10 @@
         {
           "name": "chapter_index",
           "type": "u8"
+        },
+        {
+          "name": "need_nft",
+          "type": "bool"
         }
       ]
     },
@@ -331,6 +335,10 @@
         {
           "name": "chapter_index",
           "type": "u8"
+        },
+        {
+          "name": "need_nft",
+          "type": "bool"
         }
       ]
     },
@@ -382,7 +390,66 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "need_nft",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "purchase_full_book_with_existing_nft",
+      "discriminator": [
+        212,
+        77,
+        238,
+        38,
+        13,
+        34,
+        173,
+        162
+      ],
+      "accounts": [
+        {
+          "name": "book",
+          "writable": true
+        },
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "author",
+          "writable": true
+        },
+        {
+          "name": "collection",
+          "writable": true
+        },
+        {
+          "name": "mpl_core_program",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "book_nft",
+          "writable": true
+        },
+        {
+          "name": "platform",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "need_nft",
+          "type": "bool"
+        }
+      ]
     },
     {
       "name": "stake_on_book",
@@ -482,6 +549,11 @@
       "code": 6006,
       "name": "NoChapterAttribute",
       "msg": "No chapter attribute was found"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidContextError",
+      "msg": "NO context was found in ContextWrapper"
     }
   ],
   "types": [

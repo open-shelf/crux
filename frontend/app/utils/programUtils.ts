@@ -114,7 +114,7 @@ export class ProgramUtils {
     console.log("book nft", bnft.publicKey.toString())
     try {
       const tx = await this.program.methods
-        .purchaseChapter(chapterIndex)
+        .purchaseChapter(chapterIndex, false)
         .accounts({
           book: bookPubKey,
           buyer: this.provider.wallet.publicKey,
@@ -151,7 +151,7 @@ export class ProgramUtils {
 
     try {
       const tx = await this.program.methods
-        .purchaseChapterWithExistingNft(chapterIndex)
+        .purchaseChapterWithExistingNft(chapterIndex, false)
         .accounts({
           book: bookPubKey,
           buyer: this.provider.wallet.publicKey,
@@ -176,7 +176,7 @@ export class ProgramUtils {
     console.log("book nft", bnft.publicKey.toString())
 
     const tx = await this.program.methods
-      .purchaseFullBook()
+      .purchaseFullBook(false)
       .accounts({
         book: bookPubKey,
         buyer: this.provider.wallet.publicKey,

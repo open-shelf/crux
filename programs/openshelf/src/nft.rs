@@ -1,12 +1,11 @@
 use anchor_lang::prelude::*;
 use mpl_core::{
-    accounts::{BaseAssetV1, BaseCollectionV1},
+    accounts::BaseCollectionV1,
     instructions::{CreateCollectionV2CpiBuilder, CreateV2CpiBuilder, UpdatePluginV1CpiBuilder},
     types::{
         Attribute, Attributes, PermanentFreezeDelegate, Plugin, PluginAuthority,
         PluginAuthorityPair,
     },
-    Asset,
 };
 
 use crate::{errors::ProgramErrorCode, state::Book, PurchaseContext, PurchaseUpdateContext};
