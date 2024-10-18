@@ -8,6 +8,8 @@ pub enum ProgramErrorCode {
     NotQualifiedForStaking,
     #[msg("Invalid chapter index")]
     InvalidChapterIndex,
+    #[msg("Duplicate chapter index")]
+    DuplicateChapterIndex,
     #[msg("InsufficientFunds")]
     InsufficientFunds,
     #[msg("Stake not found for this staker")]
@@ -18,4 +20,6 @@ pub enum ProgramErrorCode {
     NoChapterAttribute,
     #[msg("NO context was found in ContextWrapper")]
     InvalidContextError,
+    #[msg("Book not purchased")]
+    BookNotPurchased,
 }

@@ -119,11 +119,9 @@ pub fn create_book_asset(
     Ok(())
 }
 
-pub fn fetch_attrib_list(ctx: &Context<PurchaseUpdateContext>) -> Result<Vec<Attribute>> {
-    let (_, plugin, _) = mpl_core::fetch_asset_plugin::<Plugin>(
-        &ctx.accounts.book_nft,
-        mpl_core::types::PluginType::Attributes,
-    )?;
+pub fn fetch_attrib_list(book_nft: &AccountInfo<'_>) -> Result<Vec<Attribute>> {
+    let (_, plugin, _) =
+        mpl_core::fetch_asset_plugin::<Plugin>(book_nft, mpl_core::types::PluginType::Attributes)?;
 
     if let Plugin::Attributes(attributes) = plugin {
         Ok(attributes.attribute_list)
@@ -150,7 +148,7 @@ pub fn update_attributes_plugin(
         }),
     }
     // Fetch existing attribute_list
-    attribute_list.extend(fetch_attrib_list(ctx)?);
+    attribute_list.extend(fetch_attrib_list(&ctx.accounts.book_nft)?);
 
     let plugin = Plugin::Attributes(Attributes {
         attribute_list: attribute_list,

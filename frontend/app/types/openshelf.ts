@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/openshelf.json`.
  */
 export type Openshelf = {
-  "address": "7LPXnLBKNzpwhqfwfeaXVK4airqY5r3n2L4kabfZPAms",
+  "address": "FQhYjbrhxEXdYUrCqwa2DZe6gtfWiiyM7euea1uEjdiT",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -57,6 +57,18 @@ export type Openshelf = {
         {
           "name": "image",
           "type": "string"
+        },
+        {
+          "name": "chapters",
+          "type": {
+            "option": {
+              "vec": {
+                "defined": {
+                  "name": "chapterInput"
+                }
+              }
+            }
+          }
         }
       ]
     },
@@ -139,56 +151,6 @@ export type Openshelf = {
       "args": []
     },
     {
-      "name": "createBookAssetFullCtx",
-      "discriminator": [
-        247,
-        77,
-        131,
-        253,
-        57,
-        109,
-        33,
-        57
-      ],
-      "accounts": [
-        {
-          "name": "book",
-          "writable": true
-        },
-        {
-          "name": "buyer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "author",
-          "writable": true
-        },
-        {
-          "name": "collection",
-          "writable": true
-        },
-        {
-          "name": "mplCoreProgram",
-          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
-        },
-        {
-          "name": "bookNft",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "platform",
-          "writable": true
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "createUserCollection",
       "discriminator": [
         26,
@@ -223,6 +185,56 @@ export type Openshelf = {
         {
           "name": "mplCoreProgram",
           "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "mintBookNft",
+      "discriminator": [
+        100,
+        177,
+        188,
+        33,
+        201,
+        32,
+        224,
+        103
+      ],
+      "accounts": [
+        {
+          "name": "book",
+          "writable": true
+        },
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "author",
+          "writable": true
+        },
+        {
+          "name": "collection",
+          "writable": true
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "bookNft",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "platform",
+          "writable": true
         },
         {
           "name": "systemProgram",
@@ -538,28 +550,38 @@ export type Openshelf = {
     },
     {
       "code": 6003,
+      "name": "duplicateChapterIndex",
+      "msg": "Duplicate chapter index"
+    },
+    {
+      "code": 6004,
       "name": "insufficientFunds",
       "msg": "insufficientFunds"
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "stakerNotFound",
       "msg": "Stake not found for this staker"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "noEarningsToClaim",
       "msg": "No rewards to claim"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "noChapterAttribute",
       "msg": "No chapter attribute was found"
     },
     {
-      "code": 6007,
+      "code": 6008,
       "name": "invalidContextError",
       "msg": "NO context was found in ContextWrapper"
+    },
+    {
+      "code": 6009,
+      "name": "bookNotPurchased",
+      "msg": "Book not purchased"
     }
   ],
   "types": [
@@ -683,6 +705,30 @@ export type Openshelf = {
             "type": {
               "vec": "pubkey"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "chapterInput",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "url",
+            "type": "string"
+          },
+          {
+            "name": "index",
+            "type": "u8"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "name",
+            "type": "string"
           }
         ]
       }

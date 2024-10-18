@@ -230,11 +230,12 @@ const WalletSection: React.FC = () => {
       let tx;
       if (bNFTA != "") {
         console.log("Purchasing with existing NFT!");
-        tx = await programUtils.purchaseChapterWithExistingNFT(
+        tx = await programUtils.purchaseChapter(
           new PublicKey(bookPublicKey),
           new PublicKey(bookDetails.author),
           Number(purchaseChapterIndex),
           collectionKey,
+          false,
           new PublicKey(bNFTA)
         );
       } else {
@@ -344,37 +345,65 @@ const WalletSection: React.FC = () => {
     try {
       const bookData = JSON.parse(jsonInput);
 
-      // Add the book
-      const addBookTx = await programUtils.addBook(
-        bookData.title,
-        bookData.description,
-        bookData.genre,
-        bookData.image_url
-      );
-      console.log("Add book transaction signature", addBookTx);
-
-      // Get the newly added book's public key
-      const newBookPubKey = await programUtils.getLastAddedBookPubKey();
-      if (!newBookPubKey) {
-        throw new Error("Failed to get the public key of the newly added book");
+      const jsonData = JSON.parse(jsonInput);
+      const { title, description, genre, image_url, chapters } = jsonData;
+      console.log(chapters);
+      if (!title || !description || !genre || !image_url) {
+        setError("Missing required fields in JSON");
+        return;
       }
 
-      // Add chapters
-      for (const chapter of bookData.chapters) {
-        const addChapterTx = await programUtils.addChapter(
-          newBookPubKey,
-          chapter.url,
-          chapter.index,
-          chapter.price * LAMPORTS_PER_SOL,
-          chapter.name
+      let tx, bookPubKey;
+      if (chapters && Array.isArray(chapters)) {
+        // If chapters are provided, use them in addBook
+        [tx, bookPubKey] = await programUtils.addBook(
+          title,
+          description,
+          genre,
+          image_url,
+          chapters
         );
-        console.log(
-          `Add chapter ${chapter.index} transaction signature`,
-          addChapterTx
+      } else {
+        // If no chapters are provided, call addBook without chapters
+        [tx, bookPubKey] = await programUtils.addBook(
+          title,
+          description,
+          genre,
+          image_url
         );
       }
 
-      setBookPublicKey(newBookPubKey.toString());
+      // // Add the book
+      // const addBookTx = await programUtils.addBook(
+      //   bookData.title,
+      //   bookData.description,
+      //   bookData.genre,
+      //   bookData.image_url
+      // );
+      // console.log("Add book transaction signature", addBookTx);
+
+      // // Get the newly added book's public key
+      // const newBookPubKey = await programUtils.getLastAddedBookPubKey();
+      // if (!newBookPubKey) {
+      //   throw new Error("Failed to get the public key of the newly added book");
+      // }
+
+      // // Add chapters
+      // for (const chapter of bookData.chapters) {
+      //   const addChapterTx = await programUtils.addChapter(
+      //     newBookPubKey,
+      //     chapter.url,
+      //     chapter.index,
+      //     chapter.price * LAMPORTS_PER_SOL,
+      //     chapter.name
+      //   );
+      //   console.log(
+      //     `Add chapter ${chapter.index} transaction signature`,
+      //     addChapterTx
+      //   );
+      // }
+
+      setBookPublicKey(bookPubKey);
       await updateBookAndBalance();
       setJsonError(null);
       setError(null);
@@ -413,37 +442,14 @@ const WalletSection: React.FC = () => {
       console.log("Minting Book NFT...");
       const tx = await programUtils.createBookAsset(
         new PublicKey(bookPublicKey),
-        new PublicKey(collectionPublicKey)
+        new PublicKey(collectionPublicKey),
+        bookDetails.author
       );
       console.log("Transaction signature", tx);
       await updateBookAndBalance();
     } catch (error: unknown) {
       console.error("Error minting Book NFT:", error);
       setError(`Error minting Book NFT: ${(error as Error).message}`);
-    }
-  };
-
-  const mintChapterNft = async () => {
-    if (!programUtils || !bookDetails) {
-      console.error("Program not initialized or book not fetched");
-      return;
-    }
-    if (!collectionPublicKey) {
-      setError("Please enter a collection public key");
-      return;
-    }
-    try {
-      console.log("Minting Chapter NFT...");
-      const tx = await programUtils.createChapterAsset(
-        new PublicKey(bookPublicKey),
-        Number(chapterNftIndex),
-        new PublicKey(collectionPublicKey)
-      );
-      console.log("Transaction signature", tx);
-      await updateBookAndBalance();
-    } catch (error: unknown) {
-      console.error("Error minting Chapter NFT:", error);
-      setError(`Error minting Chapter NFT: ${(error as Error).message}`);
     }
   };
 
@@ -503,7 +509,7 @@ const WalletSection: React.FC = () => {
     }
     try {
       console.log("Fetching all NFTs...");
-      const assets = await programUtils.fetAllNFTByOwner(publicKey);
+      const assets = await programUtils.fetchAllNFTByOwner(publicKey);
       setOwnedNFTs(assets);
       setSelectedNFT(assets.length > 0 ? 0 : null);
       setError(null);
@@ -513,27 +519,19 @@ const WalletSection: React.FC = () => {
     }
   };
 
-  const createBookNFT = async () => {
-    if (!programUtils || !bookDetails) {
-      console.error("Program not initialized or book not fetched");
-      return;
-    }
-    if (!collectionPublicKey) {
-      setError("Please enter a collection public key");
+  const fetchAllBooks = async () => {
+    if (!programUtils) {
+      console.error("Program not initialized");
       return;
     }
     try {
-      console.log("Creating Book NFT...");
-      const tx = await programUtils.createBookNFT(
-        new PublicKey(bookPublicKey),
-        new PublicKey(bookDetails.author),
-        new PublicKey(collectionPublicKey)
-      );
-      console.log("Transaction signature", tx);
-      await updateBookAndBalance();
+      console.log("Fetching all books...");
+      const books = await programUtils.fetchAllBooks();
+      console.log("All books:", books);
+      setError(null);
     } catch (error: unknown) {
-      console.error("Error creating Book NFT:", error);
-      setError(`Error creating Book NFT: ${(error as Error).message}`);
+      console.error("Error fetching all books:", error);
+      setError(`Error fetching all books: ${(error as Error).message}`);
     }
   };
 
@@ -668,9 +666,6 @@ const WalletSection: React.FC = () => {
           >
             Purchase Full Book
           </button>
-          <button onClick={createBookNFT} className="btn-primary w-full">
-            Create Book NFT
-          </button>
         </div>
 
         {/* Stake and Claim Stake */}
@@ -752,19 +747,16 @@ const WalletSection: React.FC = () => {
           </button>
         </div>
 
-        {/* Mint Chapter NFT */}
+        {/* Fetch All Books */}
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-xl font-bold mb-4">Mint Chapter NFT</h3>
-          <input
-            type="number"
-            value={chapterNftIndex}
-            onChange={(e) => setChapterNftIndex(e.target.value)}
-            placeholder="Chapter Index"
-            className="input-field w-full mb-2"
-          />
-          <button onClick={mintChapterNft} className="btn-primary w-full">
-            Mint Chapter NFT
+          <h3 className="text-xl font-bold mb-4">Fetch All Books</h3>
+          <button onClick={fetchAllBooks} className="btn-primary w-full mb-4">
+            Fetch All Books
           </button>
+          <p className="text-black">
+            Click the button to fetch all books. Results will be logged to the
+            console.
+          </p>
         </div>
       </div>
 
@@ -901,39 +893,6 @@ const WalletSection: React.FC = () => {
                   <p>
                     <strong>URI:</strong> {ownedNFTs[selectedNFT].uri}
                   </p>
-                  {ownedNFTs[selectedNFT].content && (
-                    <div>
-                      <h4 className="text-lg font-semibold mt-4 mb-2">
-                        Metadata
-                      </h4>
-                      <p>
-                        <strong>Name:</strong>{" "}
-                        {ownedNFTs[selectedNFT].content.metadata.name}
-                      </p>
-                      <p>
-                        <strong>Symbol:</strong>{" "}
-                        {ownedNFTs[selectedNFT].content.metadata.symbol}
-                      </p>
-                      <p>
-                        <strong>Description:</strong>{" "}
-                        {ownedNFTs[selectedNFT].content.metadata.description}
-                      </p>
-                      {ownedNFTs[selectedNFT].content.files[0]?.uri && (
-                        <div className="mt-4">
-                          <Image
-                            src={ownedNFTs[selectedNFT].content.files[0].uri}
-                            alt={
-                              ownedNFTs[selectedNFT].content.metadata.name ||
-                              "NFT Image"
-                            }
-                            width={300}
-                            height={300}
-                            className="rounded-lg"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
             </div>

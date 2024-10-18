@@ -14,10 +14,12 @@ use nft::*;
 use purchase::*;
 use stake::*;
 
-declare_id!("7LPXnLBKNzpwhqfwfeaXVK4airqY5r3n2L4kabfZPAms");
+declare_id!("FQhYjbrhxEXdYUrCqwa2DZe6gtfWiiyM7euea1uEjdiT");
 
 #[program]
 pub mod openshelf {
+    use errors::ProgramErrorCode;
+
     use super::*;
 
     pub fn add_book(
@@ -26,8 +28,9 @@ pub mod openshelf {
         description: String,
         genre: String,
         image: String,
+        chapters: Option<Vec<ChapterInput>>,
     ) -> Result<()> {
-        book::add_book(ctx, title, description, genre, image)
+        book::add_book(ctx, title, description, genre, image, chapters)
     }
 
     pub fn add_chapter(
@@ -79,7 +82,13 @@ pub mod openshelf {
         nft::create_user_collection(ctx)
     }
 
-    pub fn create_book_asset_full_ctx(ctx: Context<PurchaseContext>) -> Result<()> {
+    pub fn mint_book_nft(ctx: Context<PurchaseContext>) -> Result<()> {
+        //Check if bookNFT is created by our code
+        for attrib in nft::fetch_attrib_list(&ctx.accounts.book_nft)? {
+            if !attrib.key.eq(&"fully_purchased".to_string()) {
+                return err!(ProgramErrorCode::BookNotPurchased);
+            }
+        }
         nft::create_book_asset(
             &ctx,
             PurchaseType::FullBookPurchase,
