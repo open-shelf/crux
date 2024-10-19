@@ -54,15 +54,7 @@ const WalletSection: React.FC = () => {
   const [bookUrl, setBookUrl] = useState<string>("");
   const [jsonInput, setJsonInput] = useState<string>("");
   const [jsonError, setJsonError] = useState<string | null>(null);
-  const [collectionName, setCollectionName] = useState<string>("");
-  const [collectionSymbol, setCollectionSymbol] = useState<string>("");
-  const [bookNftName, setBookNftName] = useState<string>("");
-  const [bookNftSymbol, setBookNftSymbol] = useState<string>("");
-  const [chapterNftName, setChapterNftName] = useState<string>("");
-  const [chapterNftSymbol, setChapterNftSymbol] = useState<string>("");
-  const [chapterNftIndex, setChapterNftIndex] = useState<string>("");
   const [collectionPublicKey, setCollectionPublicKey] = useState<string>("");
-  const [collectionMints, setCollectionMints] = useState<string[]>([]);
   const [bookDescription, setBookDescription] = useState<string>("");
   const [bookGenre, setBookGenre] = useState<string>("");
   const [collectionAssets, setCollectionAssets] = useState<any[]>([]);
@@ -70,6 +62,7 @@ const WalletSection: React.FC = () => {
   const [ownedNFTs, setOwnedNFTs] = useState<AssetV1[]>([]);
   const [selectedNFT, setSelectedNFT] = useState<number | null>(null);
   const [bNFTA, setBookNftAddress] = useState<string>("");
+  const [bookNftPublicKey, setBookNftPublicKey] = useState<string>("");
 
   useEffect(() => {
     const initializeProgram = async () => {
@@ -141,7 +134,7 @@ const WalletSection: React.FC = () => {
     }
     try {
       console.log("Adding book...");
-      const tx = await programUtils.addBook(
+      const [tx, newBookPubKey] = await programUtils.addBook(
         bookTitle,
         bookDescription,
         bookGenre,
@@ -149,7 +142,6 @@ const WalletSection: React.FC = () => {
       );
       console.log("Transaction signature", tx);
       // After adding a book, fetch its details
-      const newBookPubKey = await programUtils.getLastAddedBookPubKey();
       if (newBookPubKey) {
         setBookPublicKey(newBookPubKey.toString());
         await updateBookAndBalance();
@@ -220,13 +212,10 @@ const WalletSection: React.FC = () => {
     }
     try {
       console.log("Purchasing chapter...");
-      console.log(bNFTA);
       const bookNftAddress = new PublicKey(
         bookDetails.bookNftAddress || anchor.web3.Keypair.generate().publicKey
       );
 
-      console.log(collectionPublicKey);
-      const collectionKey = new PublicKey(collectionPublicKey);
       let tx;
       if (bNFTA != "") {
         console.log("Purchasing with existing NFT!");
@@ -234,7 +223,6 @@ const WalletSection: React.FC = () => {
           new PublicKey(bookPublicKey),
           new PublicKey(bookDetails.author),
           Number(purchaseChapterIndex),
-          collectionKey,
           false,
           new PublicKey(bNFTA)
         );
@@ -243,8 +231,7 @@ const WalletSection: React.FC = () => {
         tx = await programUtils.purchaseChapter(
           new PublicKey(bookPublicKey),
           new PublicKey(bookDetails.author),
-          Number(purchaseChapterIndex),
-          collectionKey
+          Number(purchaseChapterIndex)
         );
       }
       console.log("Transaction signature", tx);
@@ -273,13 +260,11 @@ const WalletSection: React.FC = () => {
     const bookNftAddress = new PublicKey(
       bookDetails.bookNftAddress || anchor.web3.Keypair.generate().publicKey
     );
-    const collectionKey = new PublicKey(collectionPublicKey);
     try {
       console.log("Purchasing full book...");
       const tx = await programUtils.purchaseFullBook(
         new PublicKey(bookPublicKey),
-        bookDetails.author,
-        collectionKey
+        bookDetails.author
       );
       console.log("Transaction signature", tx);
       await updateBookAndBalance();
@@ -434,15 +419,10 @@ const WalletSection: React.FC = () => {
       console.error("Program not initialized or book not fetched");
       return;
     }
-    if (!collectionPublicKey) {
-      setError("Please enter a collection public key");
-      return;
-    }
     try {
       console.log("Minting Book NFT...");
       const tx = await programUtils.createBookAsset(
         new PublicKey(bookPublicKey),
-        new PublicKey(collectionPublicKey),
         bookDetails.author
       );
       console.log("Transaction signature", tx);
@@ -464,15 +444,8 @@ const WalletSection: React.FC = () => {
     }
     setHint(null);
     try {
-      let pubKey: PublicKey;
-      try {
-        pubKey = new PublicKey(collectionPublicKey);
-      } catch (err) {
-        setError("Invalid public key format");
-        return;
-      }
-      const assetsV1 = await programUtils.fetchCollection(pubKey);
-
+      const assetsV1 = await programUtils.fetchCollection();
+      console.log(assetsV1);
       setCollectionAssets(assetsV1);
 
       // Fetch metadata for all assets
@@ -532,6 +505,23 @@ const WalletSection: React.FC = () => {
     } catch (error: unknown) {
       console.error("Error fetching all books:", error);
       setError(`Error fetching all books: ${(error as Error).message}`);
+    }
+  };
+
+  const handleFindPurchasedBookNFT = async () => {
+    if (!programUtils || !bookPublicKey) {
+      console.error("Program not initialized or book public key not set");
+      return;
+    }
+    try {
+      const bookPubKey = new PublicKey(bookPublicKey);
+      const result = await programUtils.findPurchasedBookNFT(bookPubKey);
+      console.log("Found Purchased Book NFT:", result);
+      setBookNftPublicKey(result);
+      setError(null);
+    } catch (error: unknown) {
+      console.error("Error finding purchased book NFT:", error);
+      setError(`Error finding purchased book NFT: ${(error as Error).message}`);
     }
   };
 
@@ -758,6 +748,23 @@ const WalletSection: React.FC = () => {
             console.
           </p>
         </div>
+
+        {/* Add this new section for Find Purchased Book NFT */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">Find Purchased Book NFT</h3>
+          <button
+            onClick={handleFindPurchasedBookNFT}
+            className="btn-primary w-full mb-2"
+          >
+            Find Purchased Book NFT
+          </button>
+          {bookNftPublicKey && (
+            <p className="text-sm mt-2">
+              Book NFT Public Key:{" "}
+              <span className="font-mono">{bookNftPublicKey}</span>
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Book Details */}
@@ -892,6 +899,12 @@ const WalletSection: React.FC = () => {
                   </p>
                   <p>
                     <strong>URI:</strong> {ownedNFTs[selectedNFT].uri}
+                  </p>
+                  <p>
+                    <strong>attrib:</strong>{" "}
+                    {ownedNFTs[selectedNFT].attributes?.attributeList
+                      ?.map((attr) => `${attr.key}: ${attr.value}`)
+                      .join(", ")}
                   </p>
                 </div>
               )}

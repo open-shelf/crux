@@ -5,6 +5,8 @@ use crate::PurchaseType;
 use anchor_lang::prelude::*;
 use mpl_core::accounts::BaseCollectionV1;
 
+pub const PLATFORM_PUB_KEY: Pubkey = pubkey!("6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup");
+
 fn validate_purchase(book: &Book, buyer_key: &Pubkey, chapter_index: Option<u8>) -> Result<()> {
     if let Some(index) = chapter_index {
         require!(
@@ -24,23 +26,52 @@ fn validate_purchase(book: &Book, buyer_key: &Pubkey, chapter_index: Option<u8>)
     Ok(())
 }
 
-fn calculate_shares(book: &Book, chapter_index: Option<u8>) -> (u64, u64, u64, u64) {
+fn calculate_shares(
+    book: &Book,
+    buyer_key: &Pubkey,
+    chapter_index: Option<u8>,
+) -> Result<(u64, u64, u64, u64)> {
     let price = if let Some(index) = chapter_index {
         book.chapters[index as usize].price
     } else {
-        book.full_book_price
+        // For full book purchase, calculate price based on unbought chapters
+        book.chapters
+            .iter()
+            .filter(|chapter| !chapter.readers.contains(buyer_key))
+            .map(|chapter| chapter.price)
+            .sum()
     };
-    let author_share = price * 70 / 100;
-    let stakers_share = price * 20 / 100;
-    let platform_share = price * 10 / 100;
-    (price, author_share, stakers_share, platform_share)
+
+    require!(price > 0, ProgramErrorCode::InvalidPrice);
+
+    let author_share = price
+        .checked_mul(70)
+        .and_then(|result| result.checked_div(100))
+        .ok_or(ProgramErrorCode::ArithmeticOverflow)?;
+
+    let stakers_share = price
+        .checked_mul(10)
+        .and_then(|result| result.checked_div(100))
+        .ok_or(ProgramErrorCode::ArithmeticOverflow)?;
+
+    // Calculate platform_share as the remainder
+    let platform_share = price
+        .checked_sub(author_share)
+        .and_then(|result| result.checked_sub(stakers_share))
+        .ok_or(ProgramErrorCode::ArithmeticOverflow)?;
+
+    Ok((price, author_share, stakers_share, platform_share))
 }
 
 fn update_book_state(book: &mut Book, buyer_key: &Pubkey, chapter_index: Option<u8>) {
     if let Some(index) = chapter_index {
-        book.chapters[index as usize].readers.push(*buyer_key);
+        if !book.chapters[index as usize].readers.contains(buyer_key) {
+            book.chapters[index as usize].readers.push(*buyer_key);
+        }
     } else {
-        book.readers.push(*buyer_key);
+        if !book.readers.contains(buyer_key) {
+            book.readers.push(*buyer_key);
+        }
         for chapter in &mut book.chapters {
             if !chapter.readers.contains(buyer_key) {
                 chapter.readers.push(*buyer_key);
@@ -52,6 +83,7 @@ fn update_book_state(book: &mut Book, buyer_key: &Pubkey, chapter_index: Option<
         .chapters
         .iter()
         .all(|chapter| chapter.readers.contains(buyer_key))
+        && !book.readers.contains(buyer_key)
     {
         book.readers.push(*buyer_key);
     }
@@ -85,6 +117,11 @@ fn transfer_sol<'info>(
     amount: u64,
     system_program: &Program<'info, System>,
 ) -> Result<()> {
+    require!(
+        **from.try_borrow_lamports()? >= amount,
+        ProgramErrorCode::InsufficientFunds
+    );
+
     let cpi_context = CpiContext::new(
         system_program.to_account_info(),
         anchor_lang::system_program::Transfer {
@@ -95,13 +132,27 @@ fn transfer_sol<'info>(
     anchor_lang::system_program::transfer(cpi_context, amount)
 }
 
-fn distribute_stakers_share(book: &mut Book, stakers_share: u64) {
+fn distribute_stakers_share(book: &mut Book, stakers_share: u64) -> Result<()> {
     let total_stake = book.total_stake;
+    require!(total_stake > 0, ProgramErrorCode::NoStakers);
+
     for stake in &mut book.stakes {
-        let staker_share =
-            (stake.amount as u128 * stakers_share as u128 / total_stake as u128) as u64;
-        stake.earnings += staker_share;
+        let staker_share = (stake.amount as u128)
+            .checked_mul(stakers_share as u128)
+            .and_then(|result| result.checked_div(total_stake as u128))
+            .and_then(|result| u64::try_from(result).ok())
+            .ok_or(ProgramErrorCode::ArithmeticOverflow)?;
+
+        stake.earnings = stake
+            .earnings
+            .checked_add(staker_share)
+            .ok_or(ProgramErrorCode::ArithmeticOverflow)?;
+        stake.total_earning = stake
+            .total_earning
+            .checked_add(staker_share)
+            .ok_or(ProgramErrorCode::ArithmeticOverflow)?;
     }
+    Ok(())
 }
 
 pub fn purchase_chapter(
@@ -114,8 +165,14 @@ pub fn purchase_chapter(
 
     validate_purchase(book, &buyer_key, Some(chapter_index))?;
 
-    let (_price, author_share, stakers_share, platform_share) =
-        calculate_shares(book, Some(chapter_index));
+    let (price, author_share, stakers_share, platform_share) =
+        calculate_shares(book, &buyer_key, Some(chapter_index))?;
+
+    // Check if the buyer has enough funds
+    require!(
+        ctx.accounts.buyer.lamports() >= price,
+        ProgramErrorCode::InsufficientFunds
+    );
 
     // Transfer author's share
     transfer_sol(
@@ -135,7 +192,7 @@ pub fn purchase_chapter(
 
     // Handle stakers' share
     if book.total_stake > 0 {
-        distribute_stakers_share(book, stakers_share);
+        let _ = distribute_stakers_share(book, stakers_share)?;
         transfer_sol(
             &ctx.accounts.buyer,
             &book.to_account_info(),
@@ -170,7 +227,7 @@ pub fn purchase_chapter_with_existing_nft(
     validate_purchase(book, &buyer_key, Some(chapter_index))?;
 
     let (_price, author_share, stakers_share, platform_share) =
-        calculate_shares(book, Some(chapter_index));
+        calculate_shares(book, &buyer_key, Some(chapter_index))?;
 
     // Transfer author's share
     transfer_sol(
@@ -229,7 +286,14 @@ pub fn purchase_full_book(ctx: Context<PurchaseContext>, need_nft: bool) -> Resu
 
     validate_purchase(book, &buyer_key, None)?;
 
-    let (_price, author_share, stakers_share, platform_share) = calculate_shares(book, None);
+    let (price, author_share, stakers_share, platform_share) =
+        calculate_shares(book, &buyer_key, None)?;
+
+    // Check if the buyer has enough funds
+    require!(
+        ctx.accounts.buyer.lamports() >= price,
+        ProgramErrorCode::InsufficientFunds
+    );
 
     // Transfer author's share
     transfer_sol(
@@ -249,7 +313,7 @@ pub fn purchase_full_book(ctx: Context<PurchaseContext>, need_nft: bool) -> Resu
 
     // Handle stakers' share
     if book.total_stake > 0 {
-        distribute_stakers_share(book, stakers_share);
+        distribute_stakers_share(book, stakers_share)?;
         transfer_sol(
             &ctx.accounts.buyer,
             &book.to_account_info(),
@@ -276,7 +340,14 @@ pub fn purchase_full_book_with_existing_nft(
 
     validate_purchase(book, &buyer_key, None)?;
 
-    let (_price, author_share, stakers_share, platform_share) = calculate_shares(book, None);
+    let (price, author_share, stakers_share, platform_share) =
+        calculate_shares(book, &buyer_key, None)?;
+
+    // Check if the buyer has enough funds
+    require!(
+        ctx.accounts.buyer.lamports() >= price,
+        ProgramErrorCode::InsufficientFunds
+    );
 
     // Transfer author's share
     transfer_sol(
@@ -296,7 +367,7 @@ pub fn purchase_full_book_with_existing_nft(
 
     // Handle stakers' share
     if book.total_stake > 0 {
-        distribute_stakers_share(book, stakers_share);
+        distribute_stakers_share(book, stakers_share)?;
         transfer_sol(
             &ctx.accounts.buyer,
             &book.to_account_info(),
@@ -336,7 +407,7 @@ pub struct PurchaseContext<'info> {
     #[account(mut)]
     pub book_nft: Signer<'info>,
     /// CHECK: This is safe because we're only transferring SOL to this account
-    #[account(mut)]
+    #[account(mut, address = PLATFORM_PUB_KEY)]
     pub platform: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -359,7 +430,7 @@ pub struct PurchaseUpdateContext<'info> {
     #[account(mut)]
     pub book_nft: AccountInfo<'info>,
     /// CHECK: This is safe because we're only transferring SOL to this account
-    #[account(mut)]
+    #[account(mut, address = PLATFORM_PUB_KEY)]
     pub platform: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }

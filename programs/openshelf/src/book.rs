@@ -10,6 +10,28 @@ pub fn add_book(
     image_url: String,
     chapters: Option<Vec<ChapterInput>>,
 ) -> Result<()> {
+    // Check title length
+    require!(!title.is_empty(), ProgramErrorCode::EmptyBookTitle);
+    require!(title.len() <= 50, ProgramErrorCode::BookTitleTooLong);
+
+    // Check description length
+    require!(
+        !description.is_empty(),
+        ProgramErrorCode::EmptyBookDescription
+    );
+    require!(
+        description.len() <= 200,
+        ProgramErrorCode::BookDescriptionTooLong
+    );
+
+    // Check genre length
+    require!(!genre.is_empty(), ProgramErrorCode::EmptyBookGenre);
+    require!(genre.len() <= 50, ProgramErrorCode::BookGenreTooLong);
+
+    // Check image URL
+    require!(!image_url.is_empty(), ProgramErrorCode::EmptyImageUrl);
+    require!(image_url.len() <= 200, ProgramErrorCode::ImageUrlTooLong);
+
     let clock = Clock::get()?;
     let current_timestamp = clock.unix_timestamp;
 
@@ -31,13 +53,50 @@ pub fn add_book(
 
     // Process optional chapters
     if let Some(chapter_inputs) = chapters {
+        require!(
+            chapter_inputs.len() <= 255,
+            ProgramErrorCode::TooManyChapters
+        );
+
         let mut used_indices = std::collections::HashSet::new();
+        let mut total_price: u64 = 0;
 
         for chapter_input in chapter_inputs {
             // Check if the chapter index is unique
-            if !used_indices.insert(chapter_input.index) {
-                return Err(ProgramErrorCode::DuplicateChapterIndex.into());
-            }
+            require!(
+                used_indices.insert(chapter_input.index),
+                ProgramErrorCode::DuplicateChapterIndex
+            );
+
+            // Check chapter name
+            require!(
+                !chapter_input.name.is_empty(),
+                ProgramErrorCode::EmptyChapterName
+            );
+            require!(
+                chapter_input.name.len() <= 50,
+                ProgramErrorCode::ChapterNameTooLong
+            );
+
+            // Check chapter URL
+            require!(
+                !chapter_input.url.is_empty(),
+                ProgramErrorCode::EmptyChapterUrl
+            );
+            require!(
+                chapter_input.url.len() <= 100,
+                ProgramErrorCode::ChapterUrlTooLong
+            );
+
+            // Check chapter price
+            require!(
+                chapter_input.price > 0,
+                ProgramErrorCode::InvalidChapterPrice
+            );
+            require!(
+                chapter_input.price <= 1_000_000_000, // 1 SOL (assuming 9 decimals)
+                ProgramErrorCode::ChapterPriceTooHigh
+            );
 
             let new_chapter = Chapter {
                 price: chapter_input.price,
@@ -48,11 +107,23 @@ pub fn add_book(
             };
 
             book.chapters.push(new_chapter);
-            book.full_book_price += chapter_input.price;
+            total_price = total_price
+                .checked_add(chapter_input.price)
+                .ok_or(ProgramErrorCode::ArithmeticOverflow)?;
         }
 
         // Sort chapters by index
         book.chapters.sort_by_key(|c| c.index);
+
+        // Check if indices are continuous
+        for (i, chapter) in book.chapters.iter().enumerate() {
+            require!(
+                chapter.index as usize == i,
+                ProgramErrorCode::NonContinuousChapterIndices
+            );
+        }
+
+        book.full_book_price = total_price;
     }
 
     Ok(())

@@ -7,23 +7,113 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { walletAdapterIdentity } from '@metaplex-foundation/umi-signer-wallet-adapters';
 import { AssetV1, fetchAssetsByOwner, fetchAssetsByCollection } from '@metaplex-foundation/mpl-core';
 import { fromWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters';
-import { MPL_CORE_PROGRAM_ID } from '@metaplex-foundation/mpl-core';
 
-export class ProgramUtils {
+interface IProgramUtils {
+  // Book Management
+  addBook(title: string, description: string, genre: string, imageUrl: string, chapters?: { url: string; index: number; price: number; name: string }[]): Promise<[tx: string, pubKey: string]>;
+  fetchAllBooks(): Promise<any[]>;
+  fetchBook(pubKey: PublicKey): Promise<any>;
+
+  // Chapter Management
+  addChapter(bookPubKey: PublicKey, url: string, index: number, price: number, name: string): Promise<string>;
+
+  // Purchase Operations
+  purchaseChapter(bookPubKey: PublicKey, authorPubKey: PublicKey, chapterIndex: number, needNFT?: boolean, existingBookNftAddress?: PublicKey): Promise<string>;
+  purchaseFullBook(bookPubKey: PublicKey, authorPubKey: PublicKey, needNFT?: boolean, existingBookNftAddress?: PublicKey): Promise<string>;
+
+  // Staking Operations
+  stakeOnBook(bookPubKey: PublicKey, amount: number): Promise<string>;
+  claimStakeEarnings(bookPubKey: PublicKey): Promise<string>;
+
+  // Collection Management
+  createUserCollection(): Promise<string>;
+  fetchCollection(): Promise<AssetV1[]>;
+  fetchUserCollectionKey(): Promise<string>;
+
+  // NFT Operations
+  createBookAsset(bookPubKey: PublicKey, authorPubKey: PublicKey): Promise<string>;
+  findPurchasedBookNFT(bookPubKey: PublicKey): Promise<string>;
+  fetchAllNFTByOwner(owner: PublicKey): Promise<AssetV1[]>;
+
+  // Asset Management
+  getAssets(): AssetV1[];
+}
+
+export class ProgramUtils implements IProgramUtils {
   private program: Program<Openshelf>;
   private provider: AnchorProvider;
-  private lastAddedBookPubKey: PublicKey | null = null;
+  collectionPubKey: PublicKey | null = null;
   private readonly PLATFORM_ADDRESS = new PublicKey("6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup");
-
+  private assets: AssetV1[] = [];
+  
+  /**
+   * Initializes the ProgramUtils instance.
+   * @param connection - The Solana connection object.
+   * @param wallet - The wallet object.
+   */
   constructor(connection: Connection, wallet: any) {
     this.provider = new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions());
     setProvider(this.provider);
 
     const programId = new PublicKey(idl.address);
     console.log("Program ID from IDL:", programId.toString());
-    this.program = new Program(idl as Idl, this.provider) as Program<Openshelf>;
+
+    this.program = new Program(idl as Idl, this.provider) as unknown as Program<Openshelf>;
+
+    this.initializeCollectionPubKey();
   }
 
+  /**
+   * Initializes the collection public key for the user and fetches all assets.
+   */
+  private async initializeCollectionPubKey() {
+    try {
+      const collectionKey = await this.fetchUserCollectionKey();
+      if (collectionKey) {
+        this.collectionPubKey = new PublicKey(collectionKey);
+        console.log("Collection public key set:", this.collectionPubKey.toString());
+        await this.fetchAndSetAssets();
+      } else {
+        console.log("No collection public key found for the user");
+      }
+    } catch (error) {
+      console.error("Error initializing collection public key:", error);
+    }
+  }
+
+  /**
+   * Fetches all assets in the collection and sets them to the assets property.
+   */
+  private async fetchAndSetAssets() {
+    try {
+      if (this.collectionPubKey) {
+        this.assets = await this.fetchCollection();
+        console.log(`Fetched ${this.assets.length} assets from the collection`);
+      } else {
+        console.log("Collection public key not set, unable to fetch assets");
+      }
+    } catch (error) {
+      console.error("Error fetching and setting assets:", error);
+    }
+  }
+
+  /**
+   * Gets all assets in the collection.
+   * @returns An array of AssetV1 objects.
+   */
+  getAssets(): AssetV1[] {
+    return this.assets;
+  }
+
+  /**
+   * Adds a new book to the program.
+   * @param title - The title of the book.
+   * @param description - The description of the book.
+   * @param genre - The genre of the book.
+   * @param imageUrl - The URL of the book's image.
+   * @param chapters - Optional array of chapter information.
+   * @returns A promise that resolves to a tuple containing the transaction signature and the new book's public key.
+   */
   async addBook(
     title: string,
     description: string,
@@ -50,15 +140,17 @@ export class ProgramUtils {
       .accounts({
         book: book.publicKey,
         author: this.provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([book])
       .rpc();
 
-    this.lastAddedBookPubKey = book.publicKey;
-    return [ tx, book.publicKey.toString()] ;
+    return [ tx, book.publicKey.toString()];
   }
 
+  /**
+   * Fetches all books from the program.
+   * @returns A promise that resolves to an array of book data.
+   */
   async fetchAllBooks() {
     // Fetch all book public keys from the program
     const bookPubKeys = await this.program.account.book.all();
@@ -69,7 +161,6 @@ export class ProgramUtils {
 
     console.log(bookPubKeys);
     
-    // Fetch book data for each public key using a for loop
     const fetchedBooks = [];
     for (const pubKey of bookPubKeys) {
       const bookPubKey = new PublicKey(pubKey);
@@ -77,9 +168,14 @@ export class ProgramUtils {
       fetchedBooks.push({ ...bookData, pubKey });
     }
 
-    return fetchedBooks
+    return fetchedBooks;
   }
 
+  /**
+   * Fetches a specific book's details.
+   * @param pubKey - The public key of the book to fetch.
+   * @returns A promise that resolves to the book's details.
+   */
   async fetchBook(pubKey: PublicKey): Promise<any> {
     const bookAccount = await this.program.account.book.fetch(pubKey);
     const user = this.provider.wallet.publicKey;
@@ -108,31 +204,50 @@ export class ProgramUtils {
     };
   }
 
+  /**
+   * Adds a new chapter to a book.
+   * @param bookPubKey - The public key of the book.
+   * @param url - The URL of the chapter content.
+   * @param index - The index of the chapter.
+   * @param price - The price of the chapter in lamports.
+   * @param name - The name of the chapter.
+   * @returns A promise that resolves to the transaction signature.
+   */
   async addChapter(bookPubKey: PublicKey, url: string, index: number, price: number, name: string): Promise<string> {
     return this.program.methods
       .addChapter(url, index, new anchor.BN(price), name)
       .accounts({
         book: bookPubKey,
-        author: this.provider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
   }
 
+  /**
+   * Purchases a chapter of a book.
+   * @param bookPubKey - The public key of the book.
+   * @param authorPubKey - The public key of the author.
+   * @param chapterIndex - The index of the chapter to purchase.
+   * @param needNFT - Whether an NFT is needed for the purchase.
+   * @param existingBookNftAddress - Optional existing book NFT address.
+   * @returns A promise that resolves to the transaction signature.
+   */
   async purchaseChapter(
     bookPubKey: PublicKey,
     authorPubKey: PublicKey,
     chapterIndex: number,
-    collectionKey: PublicKey,
     needNFT: boolean = false,
     existingBookNftAddress?: PublicKey
   ): Promise<string> {
+    if (!this.collectionPubKey) {
+      throw new Error("Collection public key not set");
+    }
+
     console.log("Purchasing chapter with the following details:");
     console.log("Book Public Key:", bookPubKey.toString());
     console.log("Author Public Key:", authorPubKey.toString());
     console.log("Chapter Index:", chapterIndex);
-    console.log("Collection Key:", collectionKey.toString());
-    console.log("Is Secondary:", needNFT);
+    console.log("Collection Key:", this.collectionPubKey.toString());
+    console.log("NeedNFT:", needNFT);
     console.log("Program ID:", this.program.programId.toString());
 
     let bookNft: PublicKey;
@@ -158,11 +273,8 @@ export class ProgramUtils {
           book: bookPubKey,
           buyer: this.provider.wallet.publicKey,
           author: authorPubKey,
-          collection: collectionKey,
-          mplCoreProgram: MPL_CORE_PROGRAM_ID,
+          collection: this.collectionPubKey,
           bookNft: bookNft,
-          platform: this.PLATFORM_ADDRESS,
-          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers(signers)
         .rpc();
@@ -173,17 +285,28 @@ export class ProgramUtils {
     }
   }
 
+  /**
+   * Purchases a full book.
+   * @param bookPubKey - The public key of the book.
+   * @param authorPubKey - The public key of the author.
+   * @param needNFT - Whether an NFT is needed for the purchase.
+   * @param existingBookNftAddress - Optional existing book NFT address.
+   * @returns A promise that resolves to the transaction signature.
+   */
   async purchaseFullBook(
     bookPubKey: PublicKey,
     authorPubKey: PublicKey,
-    collectionKey: PublicKey,
     needNFT: boolean = false,
     existingBookNftAddress?: PublicKey
   ): Promise<string> {
+    if (!this.collectionPubKey) {
+      throw new Error("Collection public key not set");
+    }
+
     console.log("Purchasing full book with the following details:");
     console.log("Book Public Key:", bookPubKey.toString());
     console.log("Author Public Key:", authorPubKey.toString());
-    console.log("Collection Key:", collectionKey.toString());
+    console.log("Collection Key:", this.collectionPubKey.toString());
     console.log("Need NFT:", needNFT);
     console.log("Program ID:", this.program.programId.toString());
 
@@ -202,19 +325,16 @@ export class ProgramUtils {
 
     try {
       const method = existingBookNftAddress
-        ? this.program.methods.purchaseFullBookWithExistingNft(needNFT)
-        : this.program.methods.purchaseFullBook(needNFT);
+        ? this.program.methods.purchaseFullBookWithExistingNft(true)
+        : this.program.methods.purchaseFullBook(true);
 
       const tx = await method
         .accounts({
           book: bookPubKey,
           buyer: this.provider.wallet.publicKey,
           author: authorPubKey,
-          collection: collectionKey,
-          mplCoreProgram: MPL_CORE_PROGRAM_ID,
+          collection: this.collectionPubKey,
           bookNft: bookNft,
-          platform: this.PLATFORM_ADDRESS,
-          systemProgram: anchor.web3.SystemProgram.programId,
         })
         .signers(signers)
         .rpc();
@@ -225,6 +345,12 @@ export class ProgramUtils {
     }
   }
 
+  /**
+   * Stakes on a book.
+   * @param bookPubKey - The public key of the book.
+   * @param amount - The amount to stake in lamports.
+   * @returns A promise that resolves to the transaction signature.
+   */
   async stakeOnBook(bookPubKey: PublicKey, amount: number): Promise<string> {
     return this.program.methods
       .stakeOnBook(new anchor.BN(amount))
@@ -235,6 +361,11 @@ export class ProgramUtils {
       .rpc();
   }
 
+  /**
+   * Claims stake earnings for a book.
+   * @param bookPubKey - The public key of the book.
+   * @returns A promise that resolves to the transaction signature.
+   */
   async claimStakeEarnings(bookPubKey: PublicKey): Promise<string> {
     return this.program.methods
       .claimStakerEarnings()
@@ -245,32 +376,43 @@ export class ProgramUtils {
       .rpc();
   }
 
-  getLastAddedBookPubKey(): PublicKey | null {
-    return this.lastAddedBookPubKey;
-  }
-
+  /**
+   * Creates a user collection.
+   * @returns A promise that resolves to the transaction signature.
+   */
   async createUserCollection(): Promise<string> {
     const collection = Keypair.generate();
     const userNFTAsset = Keypair.generate();
     console.log("Generated collection keypair:", collection.publicKey.toString());
     console.log("Generated user NFT keypair:", userNFTAsset.publicKey.toString());
 
-    return this.program.methods
+    let tx = this.program.methods
       .createUserCollection()
       .accounts({
         signer: this.provider.wallet.publicKey,
         payer: this.provider.wallet.publicKey,
         collection: collection.publicKey,
         userNftAsset: userNFTAsset.publicKey,
-        mplCoreProgram: MPL_CORE_PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([collection, userNFTAsset])
       .rpc();
+
+    this.collectionPubKey = new PublicKey(collection.publicKey);
+
+    return tx;
   }
 
-  async createBookAsset(bookPubKey: PublicKey, collectionKey: PublicKey,authorPubKey: PublicKey,
-  ): Promise<string> {
+  /**
+   * Creates a book asset (NFT).
+   * @param bookPubKey - The public key of the book.
+   * @param authorPubKey - The public key of the author.
+   * @returns A promise that resolves to the transaction signature.
+   */
+  async createBookAsset(bookPubKey: PublicKey, authorPubKey: PublicKey): Promise<string> {
+    if (!this.collectionPubKey) {
+      throw new Error("Collection public key not set");
+    }
+
     const bookAsset = Keypair.generate();
     console.log("Generated book asset keypair:", bookAsset.publicKey.toString());
     
@@ -280,10 +422,8 @@ export class ProgramUtils {
         book: bookPubKey,
         buyer: this.provider.wallet.publicKey,
         author: authorPubKey,
-        collection: collectionKey,
-        mplCoreProgram: MPL_CORE_PROGRAM_ID,
+        collection: this.collectionPubKey,
         bookNft: bookAsset.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([bookAsset])
       .rpc();
@@ -294,14 +434,21 @@ export class ProgramUtils {
     return tx;
   }
 
-  async fetchCollection(collectionId: PublicKey): Promise<AssetV1[]> {
+  /**
+   * Fetches assets in a collection.
+   * @returns A promise that resolves to an array of AssetV1 objects.
+   */
+  async fetchCollection(): Promise<AssetV1[]> {
+    if (!this.collectionPubKey) {
+      throw new Error("Collection public key not set");
+    }
+
     const umi = createUmi('https://api.devnet.solana.com');
     //const umi = createUmi('http://127.0.0.1:8899')
 
     // Register Wallet Adapter to Umi
     umi.use(walletAdapterIdentity(this.provider.wallet));
-
-    const collectionPublicKey = fromWeb3JsPublicKey(collectionId);
+    const collectionPublicKey = fromWeb3JsPublicKey(this.collectionPubKey);
 
     const assetsByCollection = await fetchAssetsByCollection(umi, collectionPublicKey, {
       skipDerivePlugins: false,
@@ -312,6 +459,59 @@ export class ProgramUtils {
     return assetsByCollection;
   }
 
+  /**
+   * Fetches the user's collection key.
+   * @returns A promise that resolves to the user's collection key as a string.
+   */
+  async fetchUserCollectionKey(): Promise<string> {
+    let assets = await this.fetchAllNFTByOwner(this.provider.wallet.publicKey);
+    for (let i = 0; i < assets.length; i++) {
+      const asset = assets[i];
+      
+      if (asset.attributes) {
+        const collectionIdAttribute = asset.attributes.attributeList.find(attr => attr.key === 'collection_id');
+        if (collectionIdAttribute) {
+          return collectionIdAttribute.value;
+        }
+      }
+    }
+    console.log("No asset with collection_id attribute found");
+    return "";
+  }
+
+  /**
+   * Finds the purchased book NFT for a given book.
+   * @param bookPubKey - The public key of the book.
+   * @returns A promise that resolves to the public key of the purchased book NFT as a string.
+   */
+  async findPurchasedBookNFT(
+    bookPubKey: PublicKey
+  ): Promise<string> {
+    if (!this.collectionPubKey) {
+      console.log("Collection public key not set");
+      return "";
+    }
+
+    const userNftAssets = await this.fetchCollection();
+    
+    for (const asset of userNftAssets) {
+      if (asset.attributes) {
+        const bookAddressAttr = asset.attributes.attributeList.find(attr => attr.key === 'book_address');
+        if (bookAddressAttr && bookAddressAttr.value === bookPubKey.toString()) {
+          return asset.publicKey.toString();
+        }
+      }
+    }
+
+    console.log("No matching book NFT found");
+    return "";
+  }
+
+  /**
+   * Fetches all NFTs owned by a user.
+   * @param owner - The public key of the owner.
+   * @returns A promise that resolves to an array of AssetV1 objects.
+   */
   async fetchAllNFTByOwner(owner: PublicKey): Promise<AssetV1[]> {
     const umi = createUmi('https://api.devnet.solana.com');
     //const umi = createUmi('http://127.0.0.1:8899')
@@ -323,23 +523,14 @@ export class ProgramUtils {
       skipDerivePlugins: false,
     });
 
-    console.log("All NFTs owned by", owner.toString());
     assetsByOwner.forEach((asset, index) => {
-      console.log(`Asset ${index + 1}:`);
-      console.log("  Public Key:", asset.publicKey.toString());
-      console.log("  URI:", asset.uri);
-      console.log("  Plugins:");
       
       // Check for collection_id in attributes
       if (asset.attributes) {
         const attributes = asset.attributes?.attributeList;
         const collectionIdAttribute = attributes.find(attr => attr.key === 'collection_id');
-        if (collectionIdAttribute) {
-          console.log("  Collection ID:", collectionIdAttribute.value);
-        }
       }
       
-      console.log("---");
     });
 
     return assetsByOwner;

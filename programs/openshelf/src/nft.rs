@@ -16,6 +16,11 @@ pub enum PurchaseType {
 }
 
 pub fn create_user_nft(ctx: Context<CreateUserCollection>) -> Result<()> {
+    require!(
+        ctx.accounts.payer.lamports() > 0,
+        ProgramErrorCode::InsufficientFunds
+    );
+
     let mut plugins = vec![];
 
     plugins.push(PluginAuthorityPair {
@@ -47,6 +52,11 @@ pub fn create_user_nft(ctx: Context<CreateUserCollection>) -> Result<()> {
 }
 
 pub fn create_user_collection(ctx: Context<CreateUserCollection>) -> Result<()> {
+    require!(
+        ctx.accounts.payer.lamports() > 0,
+        ProgramErrorCode::InsufficientFunds
+    );
+
     let mut collection_plugins = vec![];
 
     collection_plugins.push(PluginAuthorityPair {
@@ -73,6 +83,15 @@ pub fn create_book_asset(
     purchase_type: PurchaseType,
     transaction_id: String,
 ) -> Result<()> {
+    require!(
+        ctx.accounts.buyer.lamports() > 0,
+        ProgramErrorCode::InsufficientFunds
+    );
+    require!(
+        !transaction_id.is_empty(),
+        ProgramErrorCode::InvalidTransactionId
+    );
+
     let mut plugins = vec![];
 
     plugins.push(PluginAuthorityPair {
@@ -92,10 +111,16 @@ pub fn create_book_asset(
             key: "fully_purchased".to_string(),
             value: transaction_id,
         }),
-        PurchaseType::ChapterPurchase { chapter_index } => attribute_list.push(Attribute {
-            key: chapter_index.to_string(),
-            value: transaction_id,
-        }),
+        PurchaseType::ChapterPurchase { chapter_index } => {
+            require!(
+                (chapter_index as usize) < ctx.accounts.book.chapters.len(),
+                ProgramErrorCode::InvalidChapterIndex
+            );
+            attribute_list.push(Attribute {
+                key: chapter_index.to_string(),
+                value: transaction_id,
+            })
+        }
     };
 
     plugins.push(PluginAuthorityPair {
@@ -113,7 +138,6 @@ pub fn create_book_asset(
         .name(book.title.clone())
         .uri(book.metadata.image_url.to_string())
         .plugins(plugins)
-        //.authority(Some(&ctx.accounts.system_program))
         .invoke()?;
 
     Ok(())
@@ -135,6 +159,15 @@ pub fn update_attributes_plugin(
     purchase_type: PurchaseType,
     transaction_id: String,
 ) -> Result<()> {
+    require!(
+        ctx.accounts.buyer.lamports() > 0,
+        ProgramErrorCode::InsufficientFunds
+    );
+    require!(
+        !transaction_id.is_empty(),
+        ProgramErrorCode::InvalidTransactionId
+    );
+
     let mut attribute_list: Vec<Attribute> = Vec::new();
 
     match purchase_type {
@@ -142,10 +175,16 @@ pub fn update_attributes_plugin(
             key: "fully_purchased".to_string(),
             value: transaction_id,
         }),
-        PurchaseType::ChapterPurchase { chapter_index } => attribute_list.push(Attribute {
-            key: chapter_index.to_string(),
-            value: transaction_id,
-        }),
+        PurchaseType::ChapterPurchase { chapter_index } => {
+            require!(
+                (chapter_index as usize) < ctx.accounts.book.chapters.len(),
+                ProgramErrorCode::InvalidChapterIndex
+            );
+            attribute_list.push(Attribute {
+                key: chapter_index.to_string(),
+                value: transaction_id,
+            })
+        }
     }
     // Fetch existing attribute_list
     attribute_list.extend(fetch_attrib_list(&ctx.accounts.book_nft)?);
@@ -160,7 +199,6 @@ pub fn update_attributes_plugin(
         .plugin(plugin)
         .collection(Some(collection_info))
         .payer(&ctx.accounts.buyer)
-        //.authority(Some(&ctx.accounts.system_program))
         .system_program(&ctx.accounts.system_program)
         .invoke()?;
     Ok(())

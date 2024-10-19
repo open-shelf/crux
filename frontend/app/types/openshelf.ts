@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/openshelf.json`.
  */
 export type Openshelf = {
-  "address": "FQhYjbrhxEXdYUrCqwa2DZe6gtfWiiyM7euea1uEjdiT",
+  "address": "9xQuQk8u7L5kRifgPY5xjXhrtfjR3fp5kEekXPUpPzY8",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -234,7 +234,8 @@ export type Openshelf = {
         },
         {
           "name": "platform",
-          "writable": true
+          "writable": true,
+          "address": "6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"
         },
         {
           "name": "systemProgram",
@@ -284,7 +285,8 @@ export type Openshelf = {
         },
         {
           "name": "platform",
-          "writable": true
+          "writable": true,
+          "address": "6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"
         },
         {
           "name": "systemProgram",
@@ -342,7 +344,8 @@ export type Openshelf = {
         },
         {
           "name": "platform",
-          "writable": true
+          "writable": true,
+          "address": "6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"
         },
         {
           "name": "systemProgram",
@@ -401,7 +404,8 @@ export type Openshelf = {
         },
         {
           "name": "platform",
-          "writable": true
+          "writable": true,
+          "address": "6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"
         },
         {
           "name": "systemProgram",
@@ -455,7 +459,8 @@ export type Openshelf = {
         },
         {
           "name": "platform",
-          "writable": true
+          "writable": true,
+          "address": "6TRrKrkZENEVQyRmMc6NRgU1SYjWPRwQZqeVVmfr7vup"
         },
         {
           "name": "systemProgram",
@@ -582,6 +587,136 @@ export type Openshelf = {
       "code": 6009,
       "name": "bookNotPurchased",
       "msg": "Book not purchased"
+    },
+    {
+      "code": 6010,
+      "name": "bookAlreadyPublished",
+      "msg": "Book is already published"
+    },
+    {
+      "code": 6011,
+      "name": "maxChaptersReached",
+      "msg": "Maximum number of chapters reached"
+    },
+    {
+      "code": 6012,
+      "name": "emptyChapterUrl",
+      "msg": "Chapter URL cannot be empty"
+    },
+    {
+      "code": 6013,
+      "name": "emptyChapterName",
+      "msg": "Chapter name cannot be empty"
+    },
+    {
+      "code": 6014,
+      "name": "chapterNameTooLong",
+      "msg": "Chapter name is too long"
+    },
+    {
+      "code": 6015,
+      "name": "invalidChapterPrice",
+      "msg": "Invalid chapter price"
+    },
+    {
+      "code": 6016,
+      "name": "chapterPriceTooHigh",
+      "msg": "Chapter price is too high"
+    },
+    {
+      "code": 6017,
+      "name": "arithmeticOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6018,
+      "name": "emptyBookTitle",
+      "msg": "Book title cannot be empty"
+    },
+    {
+      "code": 6019,
+      "name": "bookTitleTooLong",
+      "msg": "Book title is too long"
+    },
+    {
+      "code": 6020,
+      "name": "emptyBookDescription",
+      "msg": "Book description cannot be empty"
+    },
+    {
+      "code": 6021,
+      "name": "bookDescriptionTooLong",
+      "msg": "Book description is too long"
+    },
+    {
+      "code": 6022,
+      "name": "emptyBookGenre",
+      "msg": "Book genre cannot be empty"
+    },
+    {
+      "code": 6023,
+      "name": "bookGenreTooLong",
+      "msg": "Book genre is too long"
+    },
+    {
+      "code": 6024,
+      "name": "emptyImageUrl",
+      "msg": "Image URL cannot be empty"
+    },
+    {
+      "code": 6025,
+      "name": "imageUrlTooLong",
+      "msg": "Image URL is too long"
+    },
+    {
+      "code": 6026,
+      "name": "tooManyChapters",
+      "msg": "Too many chapters"
+    },
+    {
+      "code": 6027,
+      "name": "chapterUrlTooLong",
+      "msg": "Chapter URL is too long"
+    },
+    {
+      "code": 6028,
+      "name": "nonContinuousChapterIndices",
+      "msg": "Chapter indices must be continuous"
+    },
+    {
+      "code": 6029,
+      "name": "bookNotPublished",
+      "msg": "Book is not published"
+    },
+    {
+      "code": 6030,
+      "name": "invalidPrice",
+      "msg": "Invalid price"
+    },
+    {
+      "code": 6031,
+      "name": "noStakers",
+      "msg": "No stakers available"
+    },
+    {
+      "code": 6032,
+      "name": "invalidStakeAmount",
+      "msg": "Invalid stake amount"
+    },
+    {
+      "code": 6033,
+      "name": "stakeAmountTooHigh",
+      "msg": "Stake amount is too high"
+    },
+    {
+      "code": 6034,
+      "name": "maxStakersReached",
+      "msg": "Maximum number of stakers reached"
+    },
+    {
+      "code": 6035,
+      "name": "invalidTransactionId",
+      "msg": "Invalid transaction ID"
     }
   ],
   "types": [
@@ -798,6 +933,10 @@ export type Openshelf = {
           },
           {
             "name": "earnings",
+            "type": "u64"
+          },
+          {
+            "name": "totalEarning",
             "type": "u64"
           }
         ]

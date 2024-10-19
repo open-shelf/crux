@@ -34,4 +34,5 @@ pub struct Stake {
     pub staker: Pubkey,
     pub amount: u64,
     pub earnings: u64,
+    pub total_earning: u64,
 }
