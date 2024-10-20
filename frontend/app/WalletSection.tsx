@@ -5,7 +5,7 @@ import { Program, AnchorProvider, Idl, setProvider } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import idl from "./idl/openshelf.json";
-import { ProgramUtils } from "./utils/programUtils";
+import { ProgramUtils, Book, Chapter, Stake } from "./utils/programUtils";
 import Image from "next/image";
 import { AssetV1 } from "@metaplex-foundation/mpl-core";
 
@@ -41,7 +41,7 @@ const WalletSection: React.FC = () => {
   const [programUtils, setProgramUtils] = useState<ProgramUtils | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [bookPublicKey, setBookPublicKey] = useState<string>("");
-  const [bookDetails, setBookDetails] = useState<any>(null);
+  const [bookDetails, setBookDetails] = useState<Book | null>(null);
   const [chapterUrl, setChapterUrl] = useState<string>("");
   const [chapterPrice, setChapterPrice] = useState<string>("");
   const [purchaseChapterIndex, setPurchaseChapterIndex] = useState<string>("");
@@ -63,6 +63,10 @@ const WalletSection: React.FC = () => {
   const [selectedNFT, setSelectedNFT] = useState<number | null>(null);
   const [bNFTA, setBookNftAddress] = useState<string>("");
   const [bookNftPublicKey, setBookNftPublicKey] = useState<string>("");
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const [university, setUniversity] = useState<string>("");
+  const [course, setCourse] = useState<string>("");
+  const [userNFT, setUserNFT] = useState<AssetV1 | null>(null);
 
   useEffect(() => {
     const initializeProgram = async () => {
@@ -213,34 +217,29 @@ const WalletSection: React.FC = () => {
     try {
       console.log("Purchasing chapter...");
       const bookNftAddress = new PublicKey(
-        bookDetails.bookNftAddress || anchor.web3.Keypair.generate().publicKey
+        bNFTA || anchor.web3.Keypair.generate().publicKey
       );
 
       let tx;
-      if (bNFTA != "") {
+      if (bNFTA !== "") {
         console.log("Purchasing with existing NFT!");
         tx = await programUtils.purchaseChapter(
-          new PublicKey(bookPublicKey),
+          new PublicKey(bookDetails.bookPubKey),
           new PublicKey(bookDetails.author),
           Number(purchaseChapterIndex),
           false,
-          new PublicKey(bNFTA)
+          bookNftAddress
         );
       } else {
         console.log("Purchasing with new NFT!");
         tx = await programUtils.purchaseChapter(
-          new PublicKey(bookPublicKey),
+          new PublicKey(bookDetails.bookPubKey),
           new PublicKey(bookDetails.author),
           Number(purchaseChapterIndex)
         );
       }
       console.log("Transaction signature", tx);
       await updateBookAndBalance();
-
-      // Update the bookNftAddress state if it's not already set
-      if (!bookNftAddress) {
-        setBookNftAddress(bookDetails.bookNftAddress);
-      }
     } catch (error: unknown) {
       console.error("Error purchasing chapter:", error);
       if (error instanceof Error) {
@@ -257,14 +256,11 @@ const WalletSection: React.FC = () => {
       return;
     }
 
-    const bookNftAddress = new PublicKey(
-      bookDetails.bookNftAddress || anchor.web3.Keypair.generate().publicKey
-    );
     try {
       console.log("Purchasing full book...");
       const tx = await programUtils.purchaseFullBook(
-        new PublicKey(bookPublicKey),
-        bookDetails.author
+        new PublicKey(bookDetails.bookPubKey),
+        new PublicKey(bookDetails.author)
       );
       console.log("Transaction signature", tx);
       await updateBookAndBalance();
@@ -405,7 +401,12 @@ const WalletSection: React.FC = () => {
     }
     try {
       console.log("Creating collection...");
-      const tx = await programUtils.createUserCollection();
+      let tx;
+      if (university.trim() && course.trim()) {
+        tx = await programUtils.createUserCollectionWithUni(university, course);
+      } else {
+        tx = await programUtils.createUserCollection();
+      }
       console.log("Transaction signature", tx);
       setError(null);
     } catch (error: unknown) {
@@ -422,8 +423,8 @@ const WalletSection: React.FC = () => {
     try {
       console.log("Minting Book NFT...");
       const tx = await programUtils.createBookAsset(
-        new PublicKey(bookPublicKey),
-        bookDetails.author
+        new PublicKey(bookDetails.bookPubKey),
+        new PublicKey(bookDetails.author)
       );
       console.log("Transaction signature", tx);
       await updateBookAndBalance();
@@ -500,6 +501,7 @@ const WalletSection: React.FC = () => {
     try {
       console.log("Fetching all books...");
       const books = await programUtils.fetchAllBooks();
+      setAllBooks(books);
       console.log("All books:", books);
       setError(null);
     } catch (error: unknown) {
@@ -522,6 +524,23 @@ const WalletSection: React.FC = () => {
     } catch (error: unknown) {
       console.error("Error finding purchased book NFT:", error);
       setError(`Error finding purchased book NFT: ${(error as Error).message}`);
+    }
+  };
+
+  const fetchUserNFT = async () => {
+    if (!programUtils) {
+      console.error("Program not initialized");
+      return;
+    }
+    try {
+      console.log("Fetching user NFT...");
+      const nft = await programUtils.fetchUserNFT();
+      setUserNFT(nft);
+      console.log("User NFT:", nft);
+      setError(null);
+    } catch (error: unknown) {
+      console.error("Error fetching user NFT:", error);
+      setError(`Error fetching user NFT: ${(error as Error).message}`);
     }
   };
 
@@ -699,6 +718,20 @@ const WalletSection: React.FC = () => {
           <h3 className="text-xl font-bold mb-4">
             Create and Fetch Collection
           </h3>
+          <input
+            type="text"
+            value={university}
+            onChange={(e) => setUniversity(e.target.value)}
+            placeholder="Enter University (optional)"
+            className="input-field w-full mb-2"
+          />
+          <input
+            type="text"
+            value={course}
+            onChange={(e) => setCourse(e.target.value)}
+            placeholder="Enter Course (optional)"
+            className="input-field w-full mb-2"
+          />
           <button
             onClick={createCollection}
             className="btn-primary w-full mb-4"
@@ -765,6 +798,26 @@ const WalletSection: React.FC = () => {
             </p>
           )}
         </div>
+
+        {/* Fetch User NFT */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">Fetch User NFT</h3>
+          <button onClick={fetchUserNFT} className="btn-primary w-full mb-4">
+            Fetch User NFT
+          </button>
+          {userNFT && (
+            <div>
+              <h4 className="font-semibold mt-2">User NFT Attributes:</h4>
+              <ul>
+                {userNFT.attributes?.attributeList.map((attr, index) => (
+                  <li key={index}>
+                    <strong>{attr.key}:</strong> {attr.value}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Book Details */}
@@ -772,9 +825,71 @@ const WalletSection: React.FC = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-xl font-bold mb-4">Book Details</h3>
           {bookDetails ? (
-            <pre className="whitespace-pre-wrap overflow-x-auto text-black">
-              {JSON.stringify(bookDetails, null, 2)}
-            </pre>
+            <div className="text-black">
+              <p>
+                <strong>Title:</strong> {bookDetails.title}
+              </p>
+              <p>
+                <strong>Author:</strong> {bookDetails.author}
+              </p>
+              <p>
+                <strong>Full Book Price:</strong>{" "}
+                {bookDetails.fullBookPrice / LAMPORTS_PER_SOL} SOL
+              </p>
+              <p>
+                <strong>Total Stake:</strong>{" "}
+                {bookDetails.totalStake / LAMPORTS_PER_SOL} SOL
+              </p>
+              <h4 className="font-semibold mt-2">Metadata:</h4>
+              <p>Description: {bookDetails.metadata.description}</p>
+              <p>
+                Publish Date:{" "}
+                {new Date(
+                  bookDetails.metadata.publishDate
+                ).toLocaleDateString()}
+              </p>
+              <p>Genre: {bookDetails.metadata.genre}</p>
+              <p>Image URL: {bookDetails.metadata.imageUrl}</p>
+              <h4 className="font-semibold mt-2">Chapters:</h4>
+              <ul>
+                {bookDetails.chapters.map((chapter, index) => (
+                  <li key={index}>
+                    {chapter.name} - Price: {chapter.price / LAMPORTS_PER_SOL}{" "}
+                    SOL
+                  </li>
+                ))}
+              </ul>
+              <h4 className="font-semibold mt-2">Stakes:</h4>
+              <ul>
+                {bookDetails.stakes.map((stake, index) => (
+                  <li key={index}>
+                    Staker: {stake.staker}, Amount:{" "}
+                    {stake.amount / LAMPORTS_PER_SOL} SOL
+                  </li>
+                ))}
+              </ul>
+              <h4 className="font-semibold mt-2">User Ownership:</h4>
+              <p>
+                Book Purchased:{" "}
+                {bookDetails.userOwnership.bookPurchased ? "Yes" : "No"}
+              </p>
+              <p>
+                Chapters Purchased:{" "}
+                {bookDetails.userOwnership.chaptersPurchased.join(", ")}
+              </p>
+              <p>
+                Staked Amount:{" "}
+                {bookDetails.userOwnership.amount / LAMPORTS_PER_SOL} SOL
+              </p>
+              <p>
+                Earnings:{" "}
+                {bookDetails.userOwnership.earnings / LAMPORTS_PER_SOL} SOL
+              </p>
+              <p>
+                Total Earnings:{" "}
+                {bookDetails.userOwnership.totalEarning / LAMPORTS_PER_SOL} SOL
+              </p>
+            </div>
           ) : (
             <p className="text-black">
               No book details available. Please fetch a book.
@@ -912,6 +1027,29 @@ const WalletSection: React.FC = () => {
           ) : (
             <p className="text-black">
               No owned NFTs available. Please fetch your NFTs.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* All Books */}
+      <div className="md:w-1/2">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-bold mb-4">All Books</h3>
+          <button onClick={fetchAllBooks} className="btn-primary w-full mb-4">
+            Fetch All Books
+          </button>
+          {allBooks.length > 0 ? (
+            <ul className="text-black">
+              {allBooks.map((book, index) => (
+                <li key={index} className="mb-2">
+                  <strong>{book.title}</strong> by {book.author}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-black">
+              No books available. Click 'Fetch All Books' to load the list.
             </p>
           )}
         </div>

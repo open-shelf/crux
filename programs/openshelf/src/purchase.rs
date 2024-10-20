@@ -155,6 +155,10 @@ fn distribute_stakers_share(book: &mut Book, stakers_share: u64) -> Result<()> {
     Ok(())
 }
 
+fn create_transaction_id() -> Result<String> {
+    return Ok("Tet".to_string());
+}
+
 pub fn purchase_chapter(
     ctx: Context<PurchaseContext>,
     chapter_index: u8,
@@ -206,7 +210,7 @@ pub fn purchase_chapter(
     let purchase_type = determine_purchase_type(book, &buyer_key, Some(chapter_index));
 
     if need_nft {
-        let transaction_id = "".to_string();
+        let transaction_id = create_transaction_id()?;
         // Check if book NFT exists already
         if !check_book_nft_exists(&ctx.accounts.book_nft)? {
             nft::create_book_asset(&ctx, purchase_type, transaction_id.clone())?;
@@ -247,7 +251,7 @@ pub fn purchase_chapter_with_existing_nft(
 
     // Handle stakers' share
     if book.total_stake > 0 {
-        distribute_stakers_share(book, stakers_share);
+        distribute_stakers_share(book, stakers_share)?;
         transfer_sol(
             &ctx.accounts.buyer,
             &book.to_account_info(),
@@ -261,10 +265,10 @@ pub fn purchase_chapter_with_existing_nft(
     let purchase_type = determine_purchase_type(book, &buyer_key, Some(chapter_index));
 
     if need_nft {
-        let transaction_id = "".to_string();
+        let transaction_id = create_transaction_id()?;
         // Check if book NFT exists already
         if check_book_nft_exists(&ctx.accounts.book_nft)? {
-            nft::update_attributes_plugin(&ctx, purchase_type, transaction_id)?;
+            nft::update_book_attributes_plugin(&ctx, purchase_type, transaction_id)?;
         }
     }
 
@@ -325,7 +329,7 @@ pub fn purchase_full_book(ctx: Context<PurchaseContext>, need_nft: bool) -> Resu
     update_book_state(book, &buyer_key, None);
 
     if need_nft {
-        let transaction_id = "".to_string();
+        let transaction_id = create_transaction_id()?;
         nft::create_book_asset(&ctx, PurchaseType::FullBookPurchase, transaction_id.clone())?;
     }
     Ok(())
@@ -379,10 +383,14 @@ pub fn purchase_full_book_with_existing_nft(
     update_book_state(book, &buyer_key, None);
 
     if need_nft {
-        let transaction_id = "".to_string();
+        let transaction_id = create_transaction_id()?;
         // Check if book NFT exists already
         if check_book_nft_exists(&ctx.accounts.book_nft)? {
-            nft::update_attributes_plugin(&ctx, PurchaseType::FullBookPurchase, transaction_id)?;
+            nft::update_book_attributes_plugin(
+                &ctx,
+                PurchaseType::FullBookPurchase,
+                transaction_id,
+            )?;
         }
     }
 

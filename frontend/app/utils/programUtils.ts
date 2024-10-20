@@ -11,8 +11,8 @@ import { fromWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters';
 interface IProgramUtils {
   // Book Management
   addBook(title: string, description: string, genre: string, imageUrl: string, chapters?: { url: string; index: number; price: number; name: string }[]): Promise<[tx: string, pubKey: string]>;
-  fetchAllBooks(): Promise<any[]>;
-  fetchBook(pubKey: PublicKey): Promise<any>;
+  fetchAllBooks(): Promise<Book[]>;
+  fetchBook(pubKey: PublicKey): Promise<Book>;
 
   // Chapter Management
   addChapter(bookPubKey: PublicKey, url: string, index: number, price: number, name: string): Promise<string>;
@@ -27,8 +27,10 @@ interface IProgramUtils {
 
   // Collection Management
   createUserCollection(): Promise<string>;
+  createUserCollectionWithUni(univ: string, course: string): Promise<string>;
   fetchCollection(): Promise<AssetV1[]>;
   fetchUserCollectionKey(): Promise<string>;
+  fetchUserNFT(): Promise<AssetV1 | null>;
 
   // NFT Operations
   createBookAsset(bookPubKey: PublicKey, authorPubKey: PublicKey): Promise<string>;
@@ -37,6 +39,50 @@ interface IProgramUtils {
 
   // Asset Management
   getAssets(): AssetV1[];
+}
+
+// New interfaces to handle book data
+export interface MetaData {
+  description: string;
+  publishDate: number; // i64 in Rust becomes number in TypeScript
+  genre: string;
+  imageUrl: string;
+}
+
+export interface Chapter {
+  price: number; // u64 becomes number
+  url: string;
+  name: string;
+  index: number; // u8 becomes number
+  readers: string[]; // Pubkey becomes string in TypeScript
+}
+
+export interface Stake {
+  staker: string; // Pubkey becomes string
+  amount: number; // u64 becomes number
+  earnings: number; // u64 becomes number
+  totalEarning: number; // u64 becomes number
+}
+
+export interface UserOwnership {
+  bookPurchased: boolean;
+  chaptersPurchased: number[];
+  amount: number; // u64 becomes number
+  earnings: number; // u64 becomes number
+  totalEarning: number; // u64 becomes number
+}
+
+export interface Book {
+  author: string; // Pubkey becomes string
+  title: string;
+  metadata: MetaData;
+  fullBookPrice: number; // u64 becomes number
+  totalStake: number; // u64 becomes number
+  chapters: Chapter[];
+  stakes: Stake[];
+  readers: string[]; // Vec<Pubkey> becomes string[]
+  bookPubKey: string;
+  userOwnership: UserOwnership;
 }
 
 export class ProgramUtils implements IProgramUtils {
@@ -149,24 +195,19 @@ export class ProgramUtils implements IProgramUtils {
 
   /**
    * Fetches all books from the program.
-   * @returns A promise that resolves to an array of book data.
+   * @returns A promise that resolves to an array of Book objects.
    */
-  async fetchAllBooks() {
-    // Fetch all book public keys from the program
+  async fetchAllBooks(): Promise<Book[]> {
     const bookPubKeys = await this.program.account.book.all();
-
-    // // Fetch all book public keys from the API
-    // const response = await fetch("http://localhost:8000/books");
-    // const bookPubKeys = await response.json();
-
-    console.log(bookPubKeys);
     
-    const fetchedBooks = [];
-    for (const pubKey of bookPubKeys) {
-      const bookPubKey = new PublicKey(pubKey);
+    const fetchedBooks: Book[] = [];
+    for (const book of bookPubKeys) {
+      const bookPubKey = new PublicKey(book.publicKey);
       const bookData = await this.fetchBook(bookPubKey);
-      fetchedBooks.push({ ...bookData, pubKey });
+      fetchedBooks.push(bookData);
     }
+
+    console.log(fetchedBooks);
 
     return fetchedBooks;
   }
@@ -174,33 +215,57 @@ export class ProgramUtils implements IProgramUtils {
   /**
    * Fetches a specific book's details.
    * @param pubKey - The public key of the book to fetch.
-   * @returns A promise that resolves to the book's details.
+   * @returns A promise that resolves to a Book object.
    */
-  async fetchBook(pubKey: PublicKey): Promise<any> {
+  async fetchBook(pubKey: PublicKey): Promise<Book> {
     const bookAccount = await this.program.account.book.fetch(pubKey);
     const user = this.provider.wallet.publicKey;
 
+    const userOwnership: UserOwnership = {
+      bookPurchased: bookAccount.readers.some((reader: PublicKey) => reader.equals(user)),
+      chaptersPurchased: bookAccount.chapters.map((chapter: any, index: number) => 
+        chapter.readers.some((reader: PublicKey) => reader.equals(user)) ? index : -1
+      ).filter((index: number) => index !== -1),
+      amount: 0,
+      earnings: 0,
+      totalEarning: 0
+    };
+
+    // Check if user has staked
+    const userStake = bookAccount.stakes.find((stake: any) => stake.staker.equals(user));
+    if (userStake) {
+      userOwnership.amount = userStake.amount.toNumber();
+      userOwnership.earnings = userStake.earnings.toNumber();
+      userOwnership.totalEarning = userStake.totalEarning.toNumber();
+    }
+
     return {
+      bookPubKey: pubKey.toString(),
       author: bookAccount.author.toString(),
       title: bookAccount.title,
-      description: bookAccount.metadata.description,
-      genre: bookAccount.metadata.genre,
-      imageUrl: bookAccount.metadata.imageUrl,
+      metadata: {
+        description: bookAccount.metadata.description,
+        publishDate: bookAccount.metadata.publishDate.toNumber(),
+        genre: bookAccount.metadata.genre,
+        imageUrl: bookAccount.metadata.imageUrl,
+      },
       fullBookPrice: bookAccount.fullBookPrice.toNumber(),
       totalStake: bookAccount.totalStake.toNumber(),
-      bookPurchased: bookAccount.readers.some((reader: PublicKey) => reader.equals(user)),
-      chapters: bookAccount.chapters.map((chapter: any) => ({
-        index: chapter.index,
-        isPurchased: chapter.readers.some((reader: PublicKey) => reader.equals(user)),
-        name: chapter.name,
-        url: chapter.url,
+      chapters: bookAccount.chapters.map((chapter: any): Chapter => ({
         price: chapter.price.toNumber(),
+        url: chapter.url,
+        name: chapter.name,
+        index: chapter.index,
+        readers: chapter.readers.map((reader: PublicKey) => reader.toString()),
       })),
-      stakes: bookAccount.stakes.map((stake: any) => ({
+      stakes: bookAccount.stakes.map((stake: any): Stake => ({
         staker: stake.staker.toString(),
         amount: stake.amount.toNumber(),
         earnings: stake.earnings.toNumber(),
+        totalEarning: stake.totalEarning.toNumber(),
       })),
+      readers: bookAccount.readers.map((reader: PublicKey) => reader.toString()),
+      userOwnership,
     };
   }
 
@@ -214,12 +279,18 @@ export class ProgramUtils implements IProgramUtils {
    * @returns A promise that resolves to the transaction signature.
    */
   async addChapter(bookPubKey: PublicKey, url: string, index: number, price: number, name: string): Promise<string> {
-    return this.program.methods
+    const tx = await this.program.methods
       .addChapter(url, index, new anchor.BN(price), name)
       .accounts({
         book: bookPubKey,
       })
       .rpc();
+
+    // Fetch the updated book details
+    const updatedBook = await this.fetchBook(bookPubKey);
+    console.log("Updated book details:", updatedBook);
+
+    return tx;
   }
 
   /**
@@ -278,6 +349,11 @@ export class ProgramUtils implements IProgramUtils {
         })
         .signers(signers)
         .rpc();
+
+      // Fetch the updated book details
+      const updatedBook = await this.fetchBook(bookPubKey);
+      console.log("Updated book details after chapter purchase:", updatedBook);
+
       return tx;
     } catch (error) {
       console.error("Error in purchaseChapter:", error);
@@ -338,6 +414,11 @@ export class ProgramUtils implements IProgramUtils {
         })
         .signers(signers)
         .rpc();
+
+      // Fetch the updated book details
+      const updatedBook = await this.fetchBook(bookPubKey);
+      console.log("Updated book details after full book purchase:", updatedBook);
+
       return tx;
     } catch (error) {
       console.error("Error in purchaseFullBook:", error);
@@ -352,13 +433,19 @@ export class ProgramUtils implements IProgramUtils {
    * @returns A promise that resolves to the transaction signature.
    */
   async stakeOnBook(bookPubKey: PublicKey, amount: number): Promise<string> {
-    return this.program.methods
+    const tx = await this.program.methods
       .stakeOnBook(new anchor.BN(amount))
       .accounts({
         book: bookPubKey,
         staker: this.provider.wallet.publicKey,
       })
       .rpc();
+
+    // Fetch the updated book details
+    const updatedBook = await this.fetchBook(bookPubKey);
+    console.log("Updated book details after staking:", updatedBook);
+
+    return tx;
   }
 
   /**
@@ -367,13 +454,19 @@ export class ProgramUtils implements IProgramUtils {
    * @returns A promise that resolves to the transaction signature.
    */
   async claimStakeEarnings(bookPubKey: PublicKey): Promise<string> {
-    return this.program.methods
+    const tx = await this.program.methods
       .claimStakerEarnings()
       .accounts({
         book: bookPubKey,
         staker: this.provider.wallet.publicKey,
       })
       .rpc();
+
+    // Fetch the updated book details
+    const updatedBook = await this.fetchBook(bookPubKey);
+    console.log("Updated book details after claiming earnings:", updatedBook);
+
+    return tx;
   }
 
   /**
@@ -387,7 +480,33 @@ export class ProgramUtils implements IProgramUtils {
     console.log("Generated user NFT keypair:", userNFTAsset.publicKey.toString());
 
     let tx = this.program.methods
-      .createUserCollection()
+      .createUserCollection(null, null)
+      .accounts({
+        signer: this.provider.wallet.publicKey,
+        payer: this.provider.wallet.publicKey,
+        collection: collection.publicKey,
+        userNftAsset: userNFTAsset.publicKey,
+      })
+      .signers([collection, userNFTAsset])
+      .rpc();
+
+    this.collectionPubKey = new PublicKey(collection.publicKey);
+
+    return tx;
+  }
+
+   /**
+   * Creates a user collection.
+   * @returns A promise that resolves to the transaction signature.
+   */
+  async createUserCollectionWithUni(univ: string, course: string): Promise<string> {
+    const collection = Keypair.generate();
+    const userNFTAsset = Keypair.generate();
+    console.log("Generated collection keypair:", collection.publicKey.toString());
+    console.log("Generated user NFT keypair:", userNFTAsset.publicKey.toString());
+
+    let tx = this.program.methods
+      .createUserCollection(univ, course)
       .accounts({
         signer: this.provider.wallet.publicKey,
         payer: this.provider.wallet.publicKey,
@@ -464,19 +583,33 @@ export class ProgramUtils implements IProgramUtils {
    * @returns A promise that resolves to the user's collection key as a string.
    */
   async fetchUserCollectionKey(): Promise<string> {
-    let assets = await this.fetchAllNFTByOwner(this.provider.wallet.publicKey);
-    for (let i = 0; i < assets.length; i++) {
-      const asset = assets[i];
-      
-      if (asset.attributes) {
-        const collectionIdAttribute = asset.attributes.attributeList.find(attr => attr.key === 'collection_id');
-        if (collectionIdAttribute) {
-          return collectionIdAttribute.value;
-        }
+    let userNFT = await this.fetchUserNFT();
+    if (userNFT && userNFT.attributes) {
+      const collectionIdAttribute = userNFT.attributes.attributeList.find((attr: { key: string; }) => attr.key === 'collection_id');
+      if (collectionIdAttribute) {
+        return collectionIdAttribute.value;
       }
     }
     console.log("No asset with collection_id attribute found");
     return "";
+  }
+
+  /**
+   * Fetches the user's collection key.
+   * @returns A promise that resolves to the user's collection key as a string.
+   */
+  async fetchUserNFT(): Promise<AssetV1 | null> {
+    let assets = await this.fetchAllNFTByOwner(this.provider.wallet.publicKey);
+    for (const asset of assets) {
+      if (asset.attributes) {
+        const collectionIdAttribute = asset.attributes.attributeList.find(attr => attr.key === 'collection_id');
+        if (collectionIdAttribute) {
+          return asset;
+        }
+      }
+    }
+    console.log("No asset with collection_id attribute found");
+    return null;
   }
 
   /**

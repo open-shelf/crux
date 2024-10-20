@@ -15,7 +15,11 @@ pub enum PurchaseType {
     ChapterPurchase { chapter_index: u8 },
 }
 
-pub fn create_user_nft(ctx: Context<CreateUserCollection>) -> Result<()> {
+pub fn create_user_nft(
+    ctx: Context<CreateUserCollection>,
+    university: Option<String>,
+    course: Option<String>,
+) -> Result<()> {
     require!(
         ctx.accounts.payer.lamports() > 0,
         ProgramErrorCode::InsufficientFunds
@@ -28,13 +32,27 @@ pub fn create_user_nft(ctx: Context<CreateUserCollection>) -> Result<()> {
         authority: None,
     });
 
+    let mut attribute_list = vec![Attribute {
+        key: "collection_id".to_string(),
+        value: ctx.accounts.collection.key.to_string(),
+    }];
+
+    if let Some(univ) = university {
+        attribute_list.push(Attribute {
+            key: "university".to_string(),
+            value: univ,
+        });
+    }
+
+    if let Some(crs) = course {
+        attribute_list.push(Attribute {
+            key: "course".to_string(),
+            value: crs,
+        });
+    }
+
     plugins.push(PluginAuthorityPair {
-        plugin: Plugin::Attributes(Attributes {
-            attribute_list: vec![Attribute {
-                key: "collection_id".to_string(),
-                value: ctx.accounts.collection.key.to_string(),
-            }],
-        }),
+        plugin: Plugin::Attributes(Attributes { attribute_list }),
         authority: None,
     });
 
@@ -51,7 +69,11 @@ pub fn create_user_nft(ctx: Context<CreateUserCollection>) -> Result<()> {
     Ok(())
 }
 
-pub fn create_user_collection(ctx: Context<CreateUserCollection>) -> Result<()> {
+pub fn create_user_collection(
+    ctx: Context<CreateUserCollection>,
+    university: Option<String>,
+    course: Option<String>,
+) -> Result<()> {
     require!(
         ctx.accounts.payer.lamports() > 0,
         ProgramErrorCode::InsufficientFunds
@@ -73,7 +95,7 @@ pub fn create_user_collection(ctx: Context<CreateUserCollection>) -> Result<()> 
         .plugins(collection_plugins)
         .invoke()?;
 
-    create_user_nft(ctx)?;
+    create_user_nft(ctx, university, course)?;
 
     Ok(())
 }
@@ -154,7 +176,60 @@ pub fn fetch_attrib_list(book_nft: &AccountInfo<'_>) -> Result<Vec<Attribute>> {
     }
 }
 
-pub fn update_attributes_plugin(
+pub fn update_user_attributes_plugin(
+    ctx: Context<UpdateUserAsset>,
+    university: Option<String>,
+    course: Option<String>,
+) -> Result<()> {
+    require!(
+        ctx.accounts.signer.lamports() > 0,
+        ProgramErrorCode::InsufficientFunds
+    );
+
+    let mut attribute_list = fetch_attrib_list(&ctx.accounts.user_nft_asset)?;
+
+    // Update or add university attribute
+    if let Some(univ) = university {
+        if let Some(univ_attr) = attribute_list
+            .iter_mut()
+            .find(|attr| attr.key == "university")
+        {
+            univ_attr.value = univ;
+        } else {
+            attribute_list.push(Attribute {
+                key: "university".to_string(),
+                value: univ,
+            });
+        }
+    }
+
+    // Update or add course attribute
+    if let Some(crs) = course {
+        if let Some(course_attr) = attribute_list.iter_mut().find(|attr| attr.key == "course") {
+            course_attr.value = crs;
+        } else {
+            attribute_list.push(Attribute {
+                key: "course".to_string(),
+                value: crs,
+            });
+        }
+    }
+
+    let plugin = Plugin::Attributes(Attributes {
+        attribute_list: attribute_list,
+    });
+
+    UpdatePluginV1CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
+        .asset(&ctx.accounts.user_nft_asset)
+        .plugin(plugin)
+        .payer(&ctx.accounts.signer)
+        .system_program(&ctx.accounts.system_program)
+        .invoke()?;
+
+    Ok(())
+}
+
+pub fn update_book_attributes_plugin(
     ctx: &Context<PurchaseUpdateContext>,
     purchase_type: PurchaseType,
     transaction_id: String,
@@ -213,6 +288,18 @@ pub struct CreateUserCollection<'info> {
     pub collection: Signer<'info>,
     #[account(mut)]
     pub user_nft_asset: Signer<'info>,
+    /// CHECK: This is the MPL Core program ID
+    #[account(address = mpl_core::ID)]
+    pub mpl_core_program: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateUserAsset<'info> {
+    pub signer: Signer<'info>,
+    /// CHECK: This is user NFT of the user
+    #[account(mut)]
+    pub user_nft_asset: AccountInfo<'info>,
     /// CHECK: This is the MPL Core program ID
     #[account(address = mpl_core::ID)]
     pub mpl_core_program: UncheckedAccount<'info>,

@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/openshelf.json`.
  */
 export type Openshelf = {
-  "address": "9xQuQk8u7L5kRifgPY5xjXhrtfjR3fp5kEekXPUpPzY8",
+  "address": "FYumxk5wR7RWKa8M71hzJbiExSpi3AgAgteah1xqH6kD",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -191,7 +191,20 @@ export type Openshelf = {
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "university",
+          "type": {
+            "option": "string"
+          }
+        },
+        {
+          "name": "course",
+          "type": {
+            "option": "string"
+          }
+        }
+      ]
     },
     {
       "name": "mintBookNft",
@@ -505,6 +518,51 @@ export type Openshelf = {
         {
           "name": "amount",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "updateUserAttributesPlugin",
+      "discriminator": [
+        76,
+        42,
+        62,
+        22,
+        107,
+        93,
+        51,
+        146
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "userNftAsset",
+          "writable": true
+        },
+        {
+          "name": "mplCoreProgram",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "university",
+          "type": {
+            "option": "string"
+          }
+        },
+        {
+          "name": "course",
+          "type": {
+            "option": "string"
+          }
         }
       ]
     }

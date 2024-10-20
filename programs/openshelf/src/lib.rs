@@ -14,7 +14,7 @@ use nft::*;
 use purchase::*;
 use stake::*;
 
-declare_id!("9xQuQk8u7L5kRifgPY5xjXhrtfjR3fp5kEekXPUpPzY8");
+declare_id!("FYumxk5wR7RWKa8M71hzJbiExSpi3AgAgteah1xqH6kD");
 
 #[program]
 pub mod openshelf {
@@ -78,8 +78,12 @@ pub mod openshelf {
         stake::claim_staker_earnings(ctx)
     }
 
-    pub fn create_user_collection(ctx: Context<CreateUserCollection>) -> Result<()> {
-        nft::create_user_collection(ctx)
+    pub fn create_user_collection(
+        ctx: Context<CreateUserCollection>,
+        university: Option<String>,
+        course: Option<String>,
+    ) -> Result<()> {
+        nft::create_user_collection(ctx, university, course)
     }
 
     pub fn mint_book_nft(ctx: Context<PurchaseContext>) -> Result<()> {
@@ -95,5 +99,13 @@ pub mod openshelf {
             "transaction_id".to_string(),
         )?;
         Ok(())
+    }
+
+    pub fn update_user_attributes_plugin(
+        ctx: Context<UpdateUserAsset>,
+        university: Option<String>,
+        course: Option<String>,
+    ) -> Result<()> {
+        nft::update_user_attributes_plugin(ctx, university, course)
     }
 }

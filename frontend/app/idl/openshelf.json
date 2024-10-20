@@ -1,5 +1,5 @@
 {
-  "address": "9xQuQk8u7L5kRifgPY5xjXhrtfjR3fp5kEekXPUpPzY8",
+  "address": "FYumxk5wR7RWKa8M71hzJbiExSpi3AgAgteah1xqH6kD",
   "metadata": {
     "name": "openshelf",
     "version": "0.1.0",
@@ -185,7 +185,20 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "university",
+          "type": {
+            "option": "string"
+          }
+        },
+        {
+          "name": "course",
+          "type": {
+            "option": "string"
+          }
+        }
+      ]
     },
     {
       "name": "mint_book_nft",
@@ -499,6 +512,51 @@
         {
           "name": "amount",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "update_user_attributes_plugin",
+      "discriminator": [
+        76,
+        42,
+        62,
+        22,
+        107,
+        93,
+        51,
+        146
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "signer": true
+        },
+        {
+          "name": "user_nft_asset",
+          "writable": true
+        },
+        {
+          "name": "mpl_core_program",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "university",
+          "type": {
+            "option": "string"
+          }
+        },
+        {
+          "name": "course",
+          "type": {
+            "option": "string"
+          }
         }
       ]
     }

@@ -163,10 +163,10 @@ fn handle_nft(
     purchase_type: &PurchaseType,
     existing_nft: bool,
 ) -> Result<()> {
-    let transaction_id = "".to_string();
+    let transaction_id = create_transaction_id()?;
     if existing_nft {
         if check_book_nft_exists(ctx.book_nft())? {
-            nft::update_attributes_plugin(&ctx, purchase_type.clone(), transaction_id)?;
+            nft::update_book_attributes_plugin(&ctx, purchase_type.clone(), transaction_id)?;
         }
     } else {
         nft::create_book_asset(&ctx, purchase_type.clone(), transaction_id)?;
